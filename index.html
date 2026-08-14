@@ -150,6 +150,74 @@
     margin-top: 4px;
   }
   a { color: var(--accent); }
+  .link-btn {
+    width: auto;
+    margin-top: 10px;
+    background: none;
+    color: var(--accent);
+    padding: 0;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: underline;
+  }
+  .link-btn:hover:not(:disabled) { background: none; color: var(--accent-hover); }
+  .manage-panel {
+    margin-top: 12px;
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .app-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .app-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--input-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .app-row .app-info {
+    overflow: hidden;
+  }
+  .app-row .app-name {
+    color: var(--text);
+    font-weight: 500;
+  }
+  .app-row .app-repo {
+    color: var(--text-dim);
+    font-size: 11.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .app-row .app-delete {
+    flex-shrink: 0;
+    width: auto;
+    margin-top: 0;
+    background: rgba(240, 101, 101, 0.12);
+    color: var(--error);
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+  }
+  .app-row .app-delete:hover:not(:disabled) { background: rgba(240, 101, 101, 0.22); }
+  .empty-list {
+    color: var(--text-dim);
+    font-size: 13px;
+    padding: 8px 0;
+  }
+  .add-app-btn {
+    margin-top: 14px;
+  }
   .footer-note {
     margin-top: 20px;
     font-size: 11.5px;
@@ -166,8 +234,16 @@
   <p class="subtitle">ファイルを選んでリポジトリ情報を入力し、ボタン一つでコミット＆プッシュします。すべてこのページ内（ブラウザ）で完結し、外部サーバーは経由しません。</p>
 
   <label for="token">Personal Access Token</label>
-  <input type="password" id="token" placeholder="github_pat_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
-  <div class="hint">GitHub → Settings → Developer settings → Fine-grained tokens で発行（対象リポジトリの Contents: Read and write 権限）。初回に入力すると、このブラウザにのみ保存され、次回以降は自動で読み込まれます。<a href="#" id="clearTokenLink">保存したトークンを削除</a></div>
+  <div class="row" style="align-items: flex-start;">
+    <div style="flex: 1;">
+      <input type="password" id="token" placeholder="github_pat_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+    </div>
+    <div style="flex: 0 0 auto;">
+      <button type="button" id="saveTokenBtn" style="margin-top:0; width:auto; padding:10px 16px;">保存</button>
+    </div>
+  </div>
+  <div class="hint" id="tokenSaveStatus">保存されているトークンはありません。</div>
+  <div class="hint">GitHub → Settings → Developer settings → Fine-grained tokens で発行（対象リポジトリの Contents: Read and write 権限）。「保存」を押すとこのブラウザにのみ保存され、次回以降は自動で読み込まれます。<a href="#" id="clearTokenLink">保存したトークンを削除</a></div>
 
   <div class="row">
     <div>
@@ -178,6 +254,19 @@
       <label for="branch">ブランチ</label>
       <input type="text" id="branch" placeholder="main" value="main">
     </div>
+  </div>
+
+  <button type="button" class="link-btn" id="toggleManageBtn">＋ アプリの追加・削除</button>
+  <div class="manage-panel" id="managePanel" style="display:none;">
+    <div class="app-list" id="appList"></div>
+
+    <label for="newAppName">アプリ名</label>
+    <input type="text" id="newAppName" placeholder="例：のりあいGO">
+
+    <label for="newAppRepo">リポジトリ（owner/repo または GitHub の URL）</label>
+    <input type="text" id="newAppRepo" placeholder="sasaki0369/my-app">
+
+    <button type="button" class="add-app-btn" id="addAppBtn">アプリを追加</button>
   </div>
 
   <label for="path">リポジトリ内の配置パス</label>
@@ -203,7 +292,7 @@
 </div>
 
 <script>
-  const REPOS = [
+  const DEFAULT_REPOS = [
     { owner: 'sasaki0369', repo: 'noriai-go',          label: 'のりあいGO' },
     { owner: 'sasaki0369', repo: 'mochimono-check',    label: '持ち物チェック' },
     { owner: 'sasaki0369', repo: 'nomimemo',           label: '飲みメモ' },
@@ -225,9 +314,69 @@
     { owner: 'sasaki0369', repo: 'event-now',          label: 'イベントNOW' }
   ];
 
+  const APP_LIST_KEY = 'ghUploaderAppList';
+
+  function loadAppList() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(APP_LIST_KEY));
+      if (Array.isArray(saved) && saved.length) return saved;
+    } catch (e) {
+      // 壊れたデータなどは無視してデフォルトにフォールバック
+    }
+    return DEFAULT_REPOS.slice();
+  }
+
+  function saveAppList(list) {
+    try {
+      localStorage.setItem(APP_LIST_KEY, JSON.stringify(list));
+    } catch (e) {
+      // localStorage が使えない環境では保存をあきらめる
+    }
+  }
+
+  // 初回アクセス時、まだ何も保存されていなければデフォルト一覧を保存しておく
+  try {
+    if (!localStorage.getItem(APP_LIST_KEY)) saveAppList(DEFAULT_REPOS.slice());
+  } catch (e) { /* noop */ }
+
+  function parseRepoInput(raw) {
+    let s = raw.trim();
+    s = s.replace(/^https?:\/\/github\.com\//i, '');
+    s = s.replace(/\.git\/?$/i, '');
+    s = s.replace(/\/+$/, '');
+    const m = s.match(/^([\w.-]+)\/([\w.-]+)$/);
+    if (!m) return null;
+    return { owner: m[1], repo: m[2] };
+  }
+
   const TOKEN_KEY = 'ghUploaderToken';
   const tokenInput = document.getElementById('token');
   const clearTokenLink = document.getElementById('clearTokenLink');
+  const saveTokenBtn = document.getElementById('saveTokenBtn');
+  const tokenSaveStatus = document.getElementById('tokenSaveStatus');
+
+  function maskToken(value) {
+    if (value.length <= 8) return '••••';
+    return value.slice(0, 4) + '…' + value.slice(-4);
+  }
+
+  function updateTokenSaveStatus() {
+    let saved = null;
+    try {
+      saved = localStorage.getItem(TOKEN_KEY);
+    } catch (e) {
+      tokenSaveStatus.textContent = 'このブラウザではトークンの保存機能が利用できません（localStorage無効）。';
+      tokenSaveStatus.style.color = 'var(--error)';
+      return;
+    }
+    if (saved) {
+      tokenSaveStatus.textContent = '✓ 保存済み（' + maskToken(saved) + '）';
+      tokenSaveStatus.style.color = 'var(--success)';
+    } else {
+      tokenSaveStatus.textContent = '保存されているトークンはありません。入力後「保存」を押してください。';
+      tokenSaveStatus.style.color = '';
+    }
+  }
 
   function loadSavedToken() {
     try {
@@ -236,6 +385,7 @@
     } catch (e) {
       // localStorage が使えない環境では自動読込をあきらめる
     }
+    updateTokenSaveStatus();
   }
 
   function saveToken(value) {
@@ -246,12 +396,24 @@
         localStorage.removeItem(TOKEN_KEY);
       }
     } catch (e) {
-      // 保存できない環境では黙って諦める
+      showStatus('error', 'トークンの保存に失敗しました。このブラウザでlocalStorageが無効になっている可能性があります。');
+      return;
     }
+    updateTokenSaveStatus();
   }
 
   loadSavedToken();
-  tokenInput.addEventListener('input', () => saveToken(tokenInput.value.trim()));
+
+  saveTokenBtn.addEventListener('click', () => {
+    const value = tokenInput.value.trim();
+    if (!value) {
+      showStatus('error', '保存するトークンを入力してください。');
+      return;
+    }
+    saveToken(value);
+    showStatus('success', 'トークンを保存しました。');
+  });
+
   clearTokenLink.addEventListener('click', (e) => {
     e.preventDefault();
     tokenInput.value = '';
@@ -282,15 +444,23 @@
   }
 
   const repoSelect = document.getElementById('repoSelect');
+  const appListEl = document.getElementById('appList');
+  const toggleManageBtn = document.getElementById('toggleManageBtn');
+  const managePanel = document.getElementById('managePanel');
+  const newAppNameInput = document.getElementById('newAppName');
+  const newAppRepoInput = document.getElementById('newAppRepo');
+  const addAppBtn = document.getElementById('addAppBtn');
 
-  function renderRepoOptions() {
+  function renderAll() {
+    const list = loadAppList();
     const counts = loadUsageCounts();
     const previouslySelected = repoSelect.value;
 
-    const sorted = REPOS.slice().sort((a, b) => {
+    // --- プルダウン（利用回数順） ---
+    const sorted = list.slice().sort((a, b) => {
       const diff = (counts[repoKey(b)] || 0) - (counts[repoKey(a)] || 0);
       if (diff !== 0) return diff;
-      return REPOS.indexOf(a) - REPOS.indexOf(b); // 利用回数が同じ場合は元の順序を維持
+      return list.indexOf(a) - list.indexOf(b); // 利用回数が同じ場合は登録順を維持
     });
 
     repoSelect.innerHTML = '';
@@ -300,18 +470,100 @@
       opt.textContent = r.label;
       repoSelect.appendChild(opt);
     });
-
     if (previouslySelected) repoSelect.value = previouslySelected;
+
+    // --- 管理パネルの一覧（登録順） ---
+    appListEl.innerHTML = '';
+    if (!list.length) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-list';
+      empty.textContent = '登録されているアプリがありません。';
+      appListEl.appendChild(empty);
+    } else {
+      list.forEach((r) => {
+        const row = document.createElement('div');
+        row.className = 'app-row';
+
+        const info = document.createElement('div');
+        info.className = 'app-info';
+        const name = document.createElement('div');
+        name.className = 'app-name';
+        name.textContent = r.label;
+        const repoLine = document.createElement('div');
+        repoLine.className = 'app-repo';
+        repoLine.textContent = repoKey(r);
+        info.appendChild(name);
+        info.appendChild(repoLine);
+
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'app-delete';
+        delBtn.textContent = '削除';
+        delBtn.addEventListener('click', () => removeApp(repoKey(r)));
+
+        row.appendChild(info);
+        row.appendChild(delBtn);
+        appListEl.appendChild(row);
+      });
+    }
+  }
+
+  function addApp(name, repoRaw) {
+    const parsed = parseRepoInput(repoRaw);
+    if (!parsed) {
+      showStatus('error', 'リポジトリは "owner/repo" またはGitHubのURL形式で入力してください。');
+      return false;
+    }
+    if (!name) {
+      showStatus('error', 'アプリ名を入力してください。');
+      return false;
+    }
+    const list = loadAppList();
+    const key = parsed.owner + '/' + parsed.repo;
+    if (list.some((r) => repoKey(r) === key)) {
+      showStatus('error', 'そのリポジトリは既に登録されています。');
+      return false;
+    }
+    list.push({ owner: parsed.owner, repo: parsed.repo, label: name });
+    saveAppList(list);
+    renderAll();
+    showStatus('success', '「' + name + '」を追加しました。');
+    return true;
+  }
+
+  function removeApp(key) {
+    const list = loadAppList();
+    const target = list.find((r) => repoKey(r) === key);
+    if (!target) return;
+    if (!confirm('「' + target.label + '」を一覧から削除しますか？（GitHub上のリポジトリ自体は削除されません）')) return;
+    const next = list.filter((r) => repoKey(r) !== key);
+    saveAppList(next);
+    renderAll();
+    showStatus('info', '「' + target.label + '」を削除しました。');
   }
 
   function recordUsage(repoValue) {
     const counts = loadUsageCounts();
     counts[repoValue] = (counts[repoValue] || 0) + 1;
     saveUsageCounts(counts);
-    renderRepoOptions();
+    renderAll();
   }
 
-  renderRepoOptions();
+  toggleManageBtn.addEventListener('click', () => {
+    const isHidden = managePanel.style.display === 'none';
+    managePanel.style.display = isHidden ? 'block' : 'none';
+    toggleManageBtn.textContent = isHidden ? '－ アプリの追加・削除を閉じる' : '＋ アプリの追加・削除';
+  });
+
+  addAppBtn.addEventListener('click', () => {
+    const ok = addApp(newAppNameInput.value.trim(), newAppRepoInput.value.trim());
+    if (ok) {
+      newAppNameInput.value = '';
+      newAppRepoInput.value = '';
+    }
+  });
+
+  renderAll();
 
   const dropZone = document.getElementById('dropZone');
   const fileInput = document.getElementById('fileInput');
