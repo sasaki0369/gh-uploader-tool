@@ -572,6 +572,9 @@
   const uploadBtn = document.getElementById('uploadBtn');
   const statusEl = document.getElementById('status');
 
+  let pathTouchedByUser = false;
+  document.getElementById('path').addEventListener('input', () => { pathTouchedByUser = true; });
+
   let selectedFiles = [];
 
   dropZone.addEventListener('click', () => fileInput.click());
@@ -606,14 +609,23 @@
   }
 
   function updatePathUiForFileCount() {
+    const pathInputEl = document.getElementById('path');
     const pathHint = document.getElementById('pathHint');
     const pathLabel = document.getElementById('pathLabel');
     if (selectedFiles.length > 1) {
       pathLabel.textContent = 'リポジトリ内の配置先フォルダ（複数ファイル時）';
       pathHint.textContent = '複数ファイルを選択中です。ここは配置先フォルダとして扱われ（空欄ならリポジトリ直下）、各ファイルは元のファイル名のまま配置されます。';
+      // ユーザーが自分で書き換えていない、初期値の "index.html"（ファイル名）が
+      // フォルダ名として誤用されるのを防ぐため、複数ファイル選択時は自動で空にする
+      if (!pathTouchedByUser && pathInputEl.value.trim() === 'index.html') {
+        pathInputEl.value = '';
+      }
     } else {
       pathLabel.textContent = 'リポジトリ内の配置パス';
       pathHint.textContent = '1ファイルのみ選択時は、このパスがそのままファイル名として使われます。複数ファイル選択時は、ここは配置先フォルダ（空欄ならリポジトリ直下）として扱われ、各ファイルは元のファイル名のまま配置されます。';
+      if (!pathTouchedByUser && pathInputEl.value.trim() === '') {
+        pathInputEl.value = 'index.html';
+      }
     }
   }
 
