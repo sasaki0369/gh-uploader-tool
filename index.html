@@ -167,7 +167,7 @@
 
   <label for="token">Personal Access Token</label>
   <input type="password" id="token" placeholder="github_pat_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
-  <div class="hint">GitHub → Settings → Developer settings → Fine-grained tokens で発行（対象リポジトリの Contents: Read and write 権限）。このページは公開されているため、トークンは埋め込まれていません。開くたびに貼り付けてください。</div>
+  <div class="hint">GitHub → Settings → Developer settings → Fine-grained tokens で発行（対象リポジトリの Contents: Read and write 権限）。初回に入力すると、このブラウザにのみ保存され、次回以降は自動で読み込まれます。<a href="#" id="clearTokenLink">保存したトークンを削除</a></div>
 
   <div class="row">
     <div>
@@ -198,7 +198,7 @@
   <div class="status" id="status"></div>
 
   <div class="footer-note">
-    このページはGitHub Pagesで公開されていますが、トークンはページに埋め込まれておらず、入力した内容はこのブラウザのメモリ上にのみ保持されます（ページを閉じる・再読み込みすると消え、外部には送信されません）。作業が終わったらGitHub側でトークンを失効させることをおすすめします。
+    このページはGitHub Pagesで公開されていますが、ページ自体にトークンは埋め込まれていません。入力したトークンはこの端末のブラウザ内（localStorage）にのみ保存され、GitHub API以外には送信されません。共有端末で使う場合は、使い終わったら上の「保存したトークンを削除」を押すか、GitHub側でトークンを失効させることをおすすめします。
   </div>
 </div>
 
@@ -224,6 +224,40 @@
     { owner: 'sasaki0369', repo: 'daredakke',          label: '誰だっけ？' },
     { owner: 'sasaki0369', repo: 'event-now',          label: 'イベントNOW' }
   ];
+
+  const TOKEN_KEY = 'ghUploaderToken';
+  const tokenInput = document.getElementById('token');
+  const clearTokenLink = document.getElementById('clearTokenLink');
+
+  function loadSavedToken() {
+    try {
+      const saved = localStorage.getItem(TOKEN_KEY);
+      if (saved) tokenInput.value = saved;
+    } catch (e) {
+      // localStorage が使えない環境では自動読込をあきらめる
+    }
+  }
+
+  function saveToken(value) {
+    try {
+      if (value) {
+        localStorage.setItem(TOKEN_KEY, value);
+      } else {
+        localStorage.removeItem(TOKEN_KEY);
+      }
+    } catch (e) {
+      // 保存できない環境では黙って諦める
+    }
+  }
+
+  loadSavedToken();
+  tokenInput.addEventListener('input', () => saveToken(tokenInput.value.trim()));
+  clearTokenLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    tokenInput.value = '';
+    saveToken('');
+    showStatus('info', '保存したトークンを削除しました。');
+  });
 
   const USAGE_KEY = 'ghUploaderUsageCounts';
 
