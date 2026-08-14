@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitHub 自動アップローダー</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#0f1115">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GHアップローダー">
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-border: #262a35;
+    --text: #e6e8ec;
+    --text-dim: #9aa1ac;
+    --accent: #5b8def;
+    --accent-hover: #4a78d6;
+    --success: #34c38f;
+    --error: #f06565;
+    --input-bg: #0f1115;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 40px 16px;
+  }
+  .card {
+    width: 100%;
+    max-width: 520px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 28px 28px 24px;
+  }
+  h1 {
+    font-size: 18px;
+    margin: 0 0 4px;
+    font-weight: 600;
+  }
+  .subtitle {
+    color: var(--text-dim);
+    font-size: 13px;
+    margin: 0 0 24px;
+    line-height: 1.5;
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin: 16px 0 6px;
+  }
+  input[type="text"], input[type="password"], select {
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 10px 12px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+    font-family: inherit;
+  }
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa1ac' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 16px;
+    padding-right: 32px;
+  }
+  select option {
+    background: var(--panel);
+    color: var(--text);
+  }
+  input[type="text"]:focus, input[type="password"]:focus, select:focus {
+    border-color: var(--accent);
+  }
+  .row {
+    display: flex;
+    gap: 12px;
+  }
+  .row > div {
+    flex: 1;
+  }
+  .file-drop {
+    margin-top: 6px;
+    border: 1.5px dashed var(--panel-border);
+    border-radius: 8px;
+    padding: 20px 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .file-drop:hover, .file-drop.dragover {
+    border-color: var(--accent);
+    background: rgba(91, 141, 239, 0.06);
+  }
+  .file-drop .fname {
+    color: var(--text);
+    font-weight: 500;
+    margin-top: 4px;
+  }
+  input[type="file"] { display: none; }
+  button {
+    width: 100%;
+    margin-top: 24px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  button:hover:not(:disabled) { background: var(--accent-hover); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .status {
+    margin-top: 14px;
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 10px 12px;
+    border-radius: 8px;
+    display: none;
+  }
+  .status.show { display: block; }
+  .status.info { background: rgba(91, 141, 239, 0.1); color: #9db8f2; }
+  .status.success { background: rgba(52, 195, 143, 0.1); color: var(--success); }
+  .status.error { background: rgba(240, 101, 101, 0.1); color: var(--error); }
+  .hint {
+    font-size: 11.5px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+  a { color: var(--accent); }
+  .footer-note {
+    margin-top: 20px;
+    font-size: 11.5px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    border-top: 1px solid var(--panel-border);
+    padding-top: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>GitHub 自動アップローダー</h1>
+  <p class="subtitle">ファイルを選んでリポジトリ情報を入力し、ボタン一つでコミット＆プッシュします。すべてこのページ内（ブラウザ）で完結し、外部サーバーは経由しません。</p>
+
+  <label for="token">Personal Access Token</label>
+  <input type="password" id="token" placeholder="github_pat_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+  <div class="hint">GitHub → Settings → Developer settings → Fine-grained tokens で発行（対象リポジトリの Contents: Read and write 権限）。このページは公開されているため、トークンは埋め込まれていません。開くたびに貼り付けてください。</div>
+
+  <div class="row">
+    <div>
+      <label for="repoSelect">アプリを選択</label>
+      <select id="repoSelect"></select>
+    </div>
+    <div>
+      <label for="branch">ブランチ</label>
+      <input type="text" id="branch" placeholder="main" value="main">
+    </div>
+  </div>
+
+  <label for="path">リポジトリ内の配置パス</label>
+  <input type="text" id="path" placeholder="index.html" value="index.html">
+
+  <label for="message">コミットメッセージ（任意）</label>
+  <input type="text" id="message" placeholder="Update index.html">
+
+  <label>アップロードするファイル</label>
+  <div class="file-drop" id="dropZone">
+    クリックまたはドラッグ＆ドロップでファイルを選択
+    <div class="fname" id="fileName"></div>
+  </div>
+  <input type="file" id="fileInput">
+
+  <button id="uploadBtn" disabled>GitHub にアップロード</button>
+
+  <div class="status" id="status"></div>
+
+  <div class="footer-note">
+    このページはGitHub Pagesで公開されていますが、トークンはページに埋め込まれておらず、入力した内容はこのブラウザのメモリ上にのみ保持されます（ページを閉じる・再読み込みすると消え、外部には送信されません）。作業が終わったらGitHub側でトークンを失効させることをおすすめします。
+  </div>
+</div>
+
+<script>
+  const REPOS = [
+    { owner: 'sasaki0369', repo: 'noriai-go',          label: 'のりあいGO' },
+    { owner: 'sasaki0369', repo: 'mochimono-check',    label: '持ち物チェック' },
+    { owner: 'sasaki0369', repo: 'nomimemo',           label: '飲みメモ' },
+    { owner: 'sasaki0369', repo: 'hokan-memo',         label: 'しまった場所メモ' },
+    { owner: 'sasaki0369', repo: 'gencho-memo',        label: '現場メモ' },
+    { owner: 'sasaki0369', repo: 'ganttchart',         label: 'やることガントチャート' },
+    { owner: 'sasaki0369', repo: 'clip-app',           label: 'Clip' },
+    { owner: 'sasaki0369', repo: 'okusuritechou',      label: 'お薬手帖' },
+    { owner: 'sasaki0369', repo: 'visit-memo',         label: '訪問録' },
+    { owner: 'sasaki0369', repo: 'sasayaki-log',       label: 'ささやきログ' },
+    { owner: 'sasaki0369', repo: 'idea-box',           label: 'アイデア箱' },
+    { owner: 'sasaki0369', repo: 'note-log',           label: 'noteろぐ' },
+    { owner: 'sasaki0369', repo: 'kaihi-pay',          label: '会費ペイ受付' },
+    { owner: 'sasaki0369', repo: 'which-like',         label: 'どっち似？' },
+    { owner: 'sasaki0369', repo: 'ogawa-esports-fes',  label: 'OeSF' },
+    { owner: 'sasaki0369', repo: 'gohan-calendar',     label: 'ご飯カレンダー' },
+    { owner: 'sasaki0369', repo: 'yakuinkai',          label: '役員会受付' },
+    { owner: 'sasaki0369', repo: 'daredakke',          label: '誰だっけ？' },
+    { owner: 'sasaki0369', repo: 'event-now',          label: 'イベントNOW' }
+  ];
+
+  const USAGE_KEY = 'ghUploaderUsageCounts';
+
+  function loadUsageCounts() {
+    try {
+      return JSON.parse(localStorage.getItem(USAGE_KEY)) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function saveUsageCounts(counts) {
+    try {
+      localStorage.setItem(USAGE_KEY, JSON.stringify(counts));
+    } catch (e) {
+      // localStorage が使えない環境では並び順の記憶をあきらめる
+    }
+  }
+
+  function repoKey(r) {
+    return r.owner + '/' + r.repo;
+  }
+
+  const repoSelect = document.getElementById('repoSelect');
+
+  function renderRepoOptions() {
+    const counts = loadUsageCounts();
+    const previouslySelected = repoSelect.value;
+
+    const sorted = REPOS.slice().sort((a, b) => {
+      const diff = (counts[repoKey(b)] || 0) - (counts[repoKey(a)] || 0);
+      if (diff !== 0) return diff;
+      return REPOS.indexOf(a) - REPOS.indexOf(b); // 利用回数が同じ場合は元の順序を維持
+    });
+
+    repoSelect.innerHTML = '';
+    sorted.forEach((r) => {
+      const opt = document.createElement('option');
+      opt.value = repoKey(r);
+      opt.textContent = r.label;
+      repoSelect.appendChild(opt);
+    });
+
+    if (previouslySelected) repoSelect.value = previouslySelected;
+  }
+
+  function recordUsage(repoValue) {
+    const counts = loadUsageCounts();
+    counts[repoValue] = (counts[repoValue] || 0) + 1;
+    saveUsageCounts(counts);
+    renderRepoOptions();
+  }
+
+  renderRepoOptions();
+
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const fileNameEl = document.getElementById('fileName');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const statusEl = document.getElementById('status');
+
+  let selectedFile = null;
+
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+  });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) {
+      handleFile(e.dataTransfer.files[0]);
+    }
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) handleFile(fileInput.files[0]);
+  });
+
+  function handleFile(file) {
+    selectedFile = file;
+    fileNameEl.textContent = file.name + '（' + Math.round(file.size / 1024) + ' KB）';
+    // パス欄が空、またはデフォルトの index.html のままならファイル名の末尾だけ合わせる
+    updateUploadState();
+  }
+
+  function updateUploadState() {
+    uploadBtn.disabled = !selectedFile;
+  }
+
+  function showStatus(type, msg) {
+    statusEl.className = 'status show ' + type;
+    statusEl.innerHTML = msg;
+  }
+
+  function arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+    }
+    return btoa(binary);
+  }
+
+  uploadBtn.addEventListener('click', async () => {
+    const token = document.getElementById('token').value.trim();
+    const repo = repoSelect.value;
+    const branch = document.getElementById('branch').value.trim() || 'main';
+    const path = document.getElementById('path').value.trim().replace(/^\/+/, '');
+    let message = document.getElementById('message').value.trim();
+
+    if (!token) { showStatus('error', 'Personal Access Token を入力してください。'); return; }
+    if (!repo || !repo.includes('/')) { showStatus('error', 'リポジトリは "owner/repo" の形式で入力してください。'); return; }
+    if (!path) { showStatus('error', '配置パスを入力してください。'); return; }
+    if (!selectedFile) { showStatus('error', 'アップロードするファイルを選択してください。'); return; }
+    if (!message) message = 'Update ' + path + ' via uploader tool';
+
+    uploadBtn.disabled = true;
+    showStatus('info', 'アップロード準備中…');
+
+    try {
+      const apiBase = 'https://api.github.com/repos/' + repo + '/contents/' + path.split('/').map(encodeURIComponent).join('/');
+      const headers = {
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28'
+      };
+
+      // 既存ファイルの sha を取得（存在すれば更新、なければ新規作成）
+      let sha = undefined;
+      showStatus('info', '既存ファイルを確認中…');
+      const getRes = await fetch(apiBase + '?ref=' + encodeURIComponent(branch), { headers });
+      if (getRes.status === 200) {
+        const getData = await getRes.json();
+        sha = getData.sha;
+      } else if (getRes.status !== 404) {
+        const errData = await getRes.json().catch(() => ({}));
+        throw new Error('既存ファイルの確認に失敗しました（' + getRes.status + '）: ' + (errData.message || ''));
+      }
+
+      // ファイルを base64 化
+      const arrayBuffer = await selectedFile.arrayBuffer();
+      const base64Content = arrayBufferToBase64(arrayBuffer);
+
+      showStatus('info', sha ? 'ファイルを更新中…' : '新規ファイルを作成中…');
+
+      const putBody = {
+        message: message,
+        content: base64Content,
+        branch: branch
+      };
+      if (sha) putBody.sha = sha;
+
+      const putRes = await fetch(apiBase, {
+        method: 'PUT',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(putBody)
+      });
+
+      const putData = await putRes.json();
+
+      if (putRes.status === 200 || putRes.status === 201) {
+        const commitUrl = putData.commit && putData.commit.html_url;
+        showStatus('success', '✔ アップロード完了しました。' + (commitUrl ? '<br><a href="' + commitUrl + '" target="_blank" rel="noopener">コミットを見る</a>' : ''));
+        recordUsage(repo);
+      } else {
+        throw new Error('アップロードに失敗しました（' + putRes.status + '）: ' + (putData.message || JSON.stringify(putData)));
+      }
+    } catch (err) {
+      showStatus('error', '✖ エラー: ' + err.message + '<br><span style="opacity:0.8">トークンの権限・リポジトリ名・ブランチ名・パスをご確認ください。</span>');
+    } finally {
+      uploadBtn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
