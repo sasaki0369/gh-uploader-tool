@@ -236,14 +236,14 @@
   <label for="token">Personal Access Token</label>
   <div class="row" style="align-items: flex-start;">
     <div style="flex: 1;">
-      <input type="password" id="token" placeholder="github_pat_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+      <input type="password" id="token" name="gh_pat_no_autofill" placeholder="github_pat_xxxxxxxxxxxxxxxxxxxx" autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true">
     </div>
     <div style="flex: 0 0 auto;">
       <button type="button" id="saveTokenBtn" style="margin-top:0; width:auto; padding:10px 16px;">保存</button>
     </div>
   </div>
   <div class="hint" id="tokenSaveStatus">保存されているトークンはありません。</div>
-  <div class="hint">GitHub → Settings → Developer settings → Fine-grained tokens で発行（対象リポジトリの Contents: Read and write 権限）。「保存」を押すとこのブラウザにのみ保存され、次回以降は自動で読み込まれます。<a href="#" id="clearTokenLink">保存したトークンを削除</a></div>
+  <div class="hint">GitHub → Settings → Developer settings → Fine-grained tokens で発行（対象リポジトリの Contents: Read and write 権限）。「保存」を押すとこのブラウザにのみ保存され、次回以降は自動で読み込まれます。アップロード時は常に保存済みのトークンが使われるため、別のトークンに切り替える場合は入力後に必ず「保存」を押してください。<a href="#" id="clearTokenLink">保存したトークンを削除</a></div>
 
   <div class="row">
     <div>
@@ -617,7 +617,15 @@
   }
 
   uploadBtn.addEventListener('click', async () => {
-    const token = document.getElementById('token').value.trim();
+    // ブラウザの自動入力で表示欄が上書きされることがあるため、
+    // 保存済みのトークンがあればそちらを優先して使う（表示欄はあくまで編集用）
+    let token = tokenInput.value.trim();
+    try {
+      const saved = localStorage.getItem(TOKEN_KEY);
+      if (saved) token = saved;
+    } catch (e) {
+      // localStorage が使えない場合は表示欄の値をそのまま使う
+    }
     const repo = repoSelect.value;
     const branch = document.getElementById('branch').value.trim() || 'main';
     const path = document.getElementById('path').value.trim().replace(/^\/+/, '');
