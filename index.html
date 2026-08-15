@@ -396,6 +396,9 @@
     <div class="confirm-row"><span class="confirm-label">リポジトリ</span><span id="confirmRepo"></span></div>
     <div class="confirm-row"><span class="confirm-label">ブランチ</span><span id="confirmBranch"></span></div>
 
+    <div class="confirm-label" style="margin-top:14px;">リポジトリ内の既存HTMLファイル</div>
+    <div class="confirm-files" id="confirmExistingHtml"></div>
+
     <div class="confirm-label" style="margin-top:14px;">アップロードするファイル</div>
     <div class="confirm-files" id="confirmFiles"></div>
 
@@ -767,6 +770,7 @@
   const confirmRepo = document.getElementById('confirmRepo');
   const confirmBranch = document.getElementById('confirmBranch');
   const confirmFiles = document.getElementById('confirmFiles');
+  const confirmExistingHtml = document.getElementById('confirmExistingHtml');
   const confirmOkBtn = document.getElementById('confirmOkBtn');
   const confirmCancelBtn = document.getElementById('confirmCancelBtn');
 
@@ -806,6 +810,36 @@
     }
   }
 
+  function dirNameOf(path) {
+    const idx = path.lastIndexOf('/');
+    return idx === -1 ? '' : path.slice(0, idx);
+  }
+
+  async function fetchHtmlFileNames(ctx, dir) {
+    try {
+      const apiBase = 'https://api.github.com/repos/' + ctx.repo + '/contents' + (dir ? '/' + dir.split('/').map(encodeURIComponent).join('/') : '');
+      const res = await fetch(apiBase + '?ref=' + encodeURIComponent(ctx.branch), {
+        headers: {
+          'Authorization': 'Bearer ' + ctx.token,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28'
+        }
+      });
+      if (res.status === 200) {
+        const data = await res.json();
+        if (!Array.isArray(data)) return { ok: false, reason: '指定パスはフォルダではありません' };
+        const names = data.filter((item) => item.type === 'file' && /\.html?$/i.test(item.name)).map((item) => item.name);
+        return { ok: true, names };
+      } else if (res.status === 404) {
+        return { ok: true, names: [] };
+      } else {
+        return { ok: false, reason: '（' + res.status + '）取得に失敗しました' };
+      }
+    } catch (e) {
+      return { ok: false, reason: 'ネットワークエラー' };
+    }
+  }
+
   async function openConfirmModal(ctx) {
     const appList = loadAppList();
     const matched = appList.find((r) => repoKey(r) === ctx.repo);
@@ -834,8 +868,39 @@
       return { existing, targetPath };
     });
 
+    // 対象フォルダ（複数ある場合はそれぞれ）に、現在どんなHTMLファイルが置かれているかを表示する
+    confirmExistingHtml.innerHTML = '';
+    const targetDirs = Array.from(new Set(ctx.targets.map((t) => dirNameOf(t.targetPath))));
+    const dirRowEls = targetDirs.map((dir) => {
+      const row = document.createElement('div');
+      row.className = 'confirm-file-row';
+      const name = document.createElement('div');
+      name.className = 'cf-name';
+      name.textContent = dir ? dir + '/' : '（リポジトリ直下）';
+      const list = document.createElement('div');
+      list.className = 'cf-meta';
+      list.textContent = '確認中…';
+      row.appendChild(name);
+      row.appendChild(list);
+      confirmExistingHtml.appendChild(row);
+      return { dir, list };
+    });
+
     pendingUploadCtx = ctx;
     confirmOverlay.classList.add('show');
+
+    dirRowEls.forEach(({ dir, list }) => {
+      fetchHtmlFileNames(ctx, dir).then((result) => {
+        if (pendingUploadCtx !== ctx) return;
+        if (!result.ok) {
+          list.textContent = '取得できませんでした（' + result.reason + '）';
+        } else if (!result.names.length) {
+          list.textContent = 'HTMLファイルはまだありません';
+        } else {
+          list.textContent = result.names.join(', ');
+        }
+      });
+    });
 
     // リポジトリ内に既に同じパスのファイルがあるか確認し、上書き対象か新規作成かをその場で表示する
     rowEls.forEach(({ existing, targetPath }) => {
