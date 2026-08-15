@@ -1,756 +1,2110 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GitHub 自動アップローダー</title>
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon-192.png" type="image/png">
-<link rel="apple-touch-icon" href="icon-192.png">
-<meta name="theme-color" content="#0f1115">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="GHアップローダー">
+<meta charset="UTF-8"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<title>イベントNow！</title>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="イベントNow"/>
+<meta name="theme-color" content="#111111"/>
+<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAABDklEQVR4nO2WMQ6DMAxFTVWJmRyEhYWNA8BhmDkGEmLmFByJzcxsHZAiFBzzQ5tKleoNYv3nn9iEJMsyihmPqOp/ABJPMI+Zzy+NMR8A7NKilrJkI9HblJkvy9RzvACkOiRZO2RQXc+UAaJrZhaP2jLEVQGA7DvO+PqgKeUjts4mgh3oJ3GOAMBRF2d4JzmozDsAsU1vAAK26IjE+xj9mobq2nAd+AbSiaqqmHmaJiJq23ZZlv39ucvfGrSmafI813MEAGiCiOZ57rrOPopDKjsAGX3fl2VZFIVP3QuwFemAdV3HcazrOk1TX44XYIxBfAzDQETbtvka7OLKpNh3sqPlBDIWKOB2/P6fXXTAC5JsfRA3PCekAAAAAElFTkSuQmCC"/>
+<link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAIAAACyr5FlAAAF8klEQVR4nO3dvy80XRTA8UteoaCwComCTuNfUSspJAoKkRCFXiER2YJCVKLR+k/UGlHRrIICieQtJpnss7tn7Y+555w79/uptljzzN75PmdmlmVifn4+AL1MWu8A/CIOiIgDIuKAiDggIg6IiAMi4oCIOCAiDoiIAyLigIg4ICIOiIgDIuKAiDggIg6IiAMi4oCIOCAiDoiIAyLigIg4IPrPegfMtFqtwZ/caDTi7YlbE5l8HHKoFAaRQy51jqPyICR1DaWGcQzYxFBHNMY2/atPHP2PX+WHTfmfM1GHOKTjpHaEzHcgkoTjcHhIHO7SOJKMo+cxcHUA/O/hINKLo3vd3S56QrvaU0pxJLrWie52SCWOdNe3lOJLSCCOjmX1v6Z9pPVavH/jLa3V/FPH/qu9hzsav5OjZll0SOLVOZ0cSazdOJIYIR4nR/tK1S+LDp5frLvJ4XmxYmh/jd7mh684ciuj4LYPL6eVPLPo4G0RXEwOb4tixdsIcRFHKecyCq5WwD6O8r+Iq3UxVK6D+fAwjoMyenLSh2UclNGHhz7M4jCfmQmxWiubOLg9GYT5zYvxNQdl9Ge7PgZxcKkxFMOLD+04uNQYh/LqqcbBpcZorC4+bD5l77AM5+E2Go06n1Y4oVRFbSUNLkgd/r9Mgv66KcXBHUollO9cNOLghBKDwqqqnlYYG+PTXMPocTA24om9tnqTg7FRFbWVtP9hH7gVNw5uUiLRuW1hckAUMQ7GRlQKw4PJARFxQBQrDs4pCmKfWZgcEBEHRFHi4JyiJuqZhckBEXFARBwQVR8HFxzK4l12MDkgIg6IiAMi4oCIOCCqOA5uVUxEumFhckBEHD3wcYoCcYTQqwb6CMQR5A7oI/c4+heQeR82v7ylXeYHwLPcJwf6IA6I7E8rtm+XcVLrI/fJ0T/NzN/nzT2OIBeQeRmBOArdHVBG8HDN4QQ1dGNyQFRxHB7+hEyGIv2kBJMDIuKAiDggIg6IiAOi6uPghkVZvB/qZnJARBwQEQdEUeLgskNN1E+RMTkgIg6IYsXBmUVB7E8mMzkgIg6IIsbBmSUqhd92weSozMnJSetfW1tb3U+7u7trf87y8rL+rg4obhyZD4+jo6Pp6ekYW9b5JTlMjoiWlpa2t7et92J0enHkOTwODg5mZ2er3abaSkaPI/Mf+V9YWNjd3Y208dhrq3payXN47O3tzc/PV7U1zTXUiCPP4fH8/Fw8mJub29/fr3z7CquqNDkyvG1pNpvf39/F452dncXFxfG3qfybPA3uVjLp4/X19ebmpng8MzNzeHg45gb1100vjgxPLhcXF5+fn8Xjzc3NlZWVSjartpI273NkMjxardbV1VXxeGpq6vj4eJxNVbRTQ1CNoz35TPq4vLx8f38vHm9sbKyuro6wkfa10hzA2pMjt5PLx8dHs9ksHk9OTp6cnIyzNeXVMzit5Hbncn19/fb2VjxeX19fW1sb6ssN/9aA8fdWcujj6+vr/Py8eDwxMTHUZant+tjEkdvFx+3t7cvLy7BfZXWpUTKbHFldfPz8/JydnY385VZrZXlayeri4/7+/unpafDne/izRsbXHPn08fv7e3p6OuCTPZQRzOMIOfXx8PDw+Pj459OclBFCmKjwu8kjM7/y8sPVUthPjpDfzYvEVRnByeQoeVsdNT5fuIvJUcpzhPgsI3iLI+TXh9sygrfTSqkjC2+rVgn/r9Hd5Ch0rFT9Roj/MoLbyVFKYhGHktArcjo5SjUbIQmVEfxPjkJ3E86XtVuKLyGNOAoprm9IdrdDWnEUElrrhHa1p/TiCMKVh6t197+Hg0gyjoJ0cWp4DBzu0jgSjqNkfkjMdyCSOsRR6H+XW/lxUv7nTNQnjtKA74UMdfxibNO/GsZRUnvHrGZNlOocR7vKQ6lrEO1yiaPbULnkkEK3fOPAn7x/4w2GiAMi4oCIOCAiDoiIAyLigIg4ICIOiIgDIuKAiDggIg6IiAMi4oCIOCAiDoiIAyLigIg4ICIOiIgDIuKAiDgg+h+XWE2ZuhL7tgAAAABJRU5ErkJggg=="/>
+<link rel="manifest" href="data:application/json;base64,eyJuYW1lIjogIlx1MzBhNFx1MzBkOVx1MzBmM1x1MzBjOE5vd1x1ZmYwMSIsICJzaG9ydF9uYW1lIjogIlx1MzBhNFx1MzBkOVx1MzBmM1x1MzBjOE5vdyIsICJzdGFydF91cmwiOiAiLi8iLCAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwgImJhY2tncm91bmRfY29sb3IiOiAiIzExMTExMSIsICJ0aGVtZV9jb2xvciI6ICIjMTExMTExIiwgIm9yaWVudGF0aW9uIjogInBvcnRyYWl0IiwgImljb25zIjogW3sic3JjIjogImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBTUFBQUFEQUNBSUFBQURkdnZ0UUFBQUdSMGxFUVZSNG5PM2R2MG9yV3hTQThaMkxObkthaUZnS3dSY1FmQURCM3NJSHNMQ3dFanZCUXZGZm9aM1lDajZBaUErZ1QyQWhsb0tkalZncWRsb290eGlZazV0SmNwTlpzL2RhYStiN1ZUbWc0OHllenpXVGFJNnRkcnNkZ0xMKzBkNEIrRVpBRUNFZ2lCQVFSQWdJSWdRRUVRS0NDQUZCaElBZ1FrQVFJU0NJRUJCRUNBZ2lCQVFSQW9JSUFVR0VnQ0JDUUJBaElJZ1FFRVFJQ0NJRUJCRUNnZ2dCUVlTQUlFSkFFSm5RM2dFcjN0L2Z4LzJVNmVucEdIdmlTNnVaNzQwdmtjc29HcGhVZ3dLS0ZNMGdEWW1wL2dHTjJFMko4eDF2eTQ3VU5xRGhaemZTU1ZYNW9ycHFHTkNnczVqNC9CblpqZGpxRTVEWkUyWjJ4eXBSaDRENm5pR0RwOGZMZm83RmQwQWVUNG5IZlI3Q2NVREZNK0hvTkxqZStXNHVBNnJONnRmZ1FKd0ZWSU1WTDNKOVVKNEM2bGxvUjZzOENxZEg1eWFnN3ZYMXNyZ2x1RHRNQndFNS9kWXN6ZGZ4V3Y5OUlGK3JXWW1lWTB6OE0rQnhtWjVBN3VaNXRWd2N2dDBKNUdMNW91bythck56eU9JRWF1Qmxhd2pqcTJFdUlBWlBYMmFYeGRZbHpPd3lxVE43T1RNVUVQVU1aN01oS3dGUnp5Z01ObVFsb0J6MURHZHRmVXdFbEg4eldWc2RtL0pWc2pDRTlBT2luaExzTktRY2tQcngxNER1R21vR3hJMnpoSkViYXYxTFdLQ2VzaXlzbTFwQTNQcFVRdjFtU0NjZ2JuMWlVRmxWaFlDNDlhbVc3czJRNWowUTlWUkZjU1ZUL3pUZTBhMlB1MG1wc3JZbW5vWEJyNlFCT1JvL0hxazhJMHNYRU0rOFVrcTIyZ3FYTU1aUFBPblhObEZBakovMDBxeDU2Z25FK0lrdDhRcW5DSWp4b3lYQnlpZWRRSXlmTkhnZENHNUVENGpYZmxRa2UwMklDUVNSdUFFeGZoU2xHVUpNSUlnUUVFUWlCc1QxUzEyQ3F4Z1RDQ0lFQkpGWUFYSDlNaUwyVll3SkJCRUNnZ2dCUVNSS1FOd0FtUkwxTm9nSkJCRUNnZ2dCUVlTQUlFSkFFS2srSUo2Q0dSVHZpUmdUQ0NJRUJCRUNHZ2x2YlJ1RWdQb3JGa05EZlJGUUg0TmFvYUVpQXVvMXZCSWE2akdodlFOL2NXNDhZZ0pCaElBZ1l1Z1NadVNWYTY2a1kyRUM5UnJlc1pISzdTQ2dQZ1pWUWoxRkJOUmZzUlhxNmN2UVBaQTFGRE1LSmhCRUNBZ2kxUWVrL2lmUVVCVHZ0L3lZUUJBaElJZ1FFRVFJQ0NJRUJKRW9BZkZFekpTb2I3UmlBa0dFZ0NCQ1FCQ0pGUkMzUVViRWZxYzVFd2dpQkFTUmlBRnhGVk9YNEg5S1lRSkJoSUFnRWpjZ3JtS0swdnhQWDB3Z2lFUVBpQ0cwc2JIeC9sODNOemZGRDV1Ym0rdittTWZIUjhrWFRmWWZEVEtCRkN3dkx5OHRMV252UlRXU0J0VFlJVlIwY0hEUWFyVWliVHpsT3FjSWlEZFlGUzBzTEt5dXJzYitLZ2xXUHZVbGpDR1UyOTNkblp5Y3JIeXppVmM0VVVBTW9hSk9wN08rdmg1disybldYT0VtdXVGRDZPWGxKWCs4dmIzOTU4K2ZDamVlZm0zVEJjUVF5dHpkM1QwOFBHU1BaMlptdHJhMllueVZaS3VkZEFMeG1sRG04UEF3Zjd5NXVUazdPMXZKWmxYK3lBU3ZBeW00djcrL3ZiM05IazlOVGUzczdPanVqMFRxZ0JoQ21lUGo0NStmbit6eDJ0cmEvUHk4Y0lOYWYrTkdjd0kxdWFIbjUrZXJxNnZzOGNURXhQNyt2bVJyaWl1cEVGRDN0MGlUR3pvOVBmMzYrc29lcjZ5c0xDNHVsdHRPOXhxbWY2YWlNNEY0UmhaQ2VIdDd1N2k0eVArNXQ3Y24zS0RLcXFwZHdyZ1pDaUdjbjU5L2ZIeGtqenVkVG9rdHFQOTVQeFBQd2hyYjBPZm41OW5aV2VsUHQ3QnVtZ0Z4TXhSQ3VMeThmSDE5TGZHSnVyYytPZVVKeE0zUTkvZjN5Y21KWkF1NmE2aC9DZU5tNlByNit1bnBhYXhQVWIvMXlla0hGQnJmME8vdjc5SFIwZWdmYjZlZUVFS3IzVzVyNzBNSVpxN285bGxiS0JNVEtIQkRQUnByOVFRN0FRVWErajhHNndtbUFnbzBOSmpOZW9LZGU2QnVQZW1ZV3EvMGpLK0d4WUF5WnIvblVySy9DTFl1WWQyNG5ObXZKMWllUUJuakF6d1NSMGR0ZHdKbGV0YXVDYVBJVVQzQi9nVEt1WmpuY3U0TzAwMUF3ZHUzNXJpY0hwMm5nRUsvUzVpWGhSN0M5VUU1Q3lqamVzVzcxZUJBWEFhVWNiMzZybmUrbStPQXdvQW5aY2JQaE1kOUhzSjNRQmt2cDhUTGZvNmxEZ0ZsQnIxRXBINkd6TzVZSmVvVFVNN0lDVE95RzdIVk1LRE04TmVzSTUxRmxTK3FxN1lCNVViODZVZUpzeHR2eTQ3VVA2QmM0cCtqMWJ1YlhJTUM2aFlwcG9aRTA2MmhBUldWU0txQnVSUVJFRVNzL3o0UWpDTWdpQkFRUkFnSUlnUUVFUUtDQ0FGQmhJQWdRa0FRSVNDSUVCQkVDQWdpQkFRUkFvSUlBVUdFZ0NCQ1FCQWhJSWdRRUVRSUNDSUVCQkVDZ2dnQlFZU0FJRUpBRVBrWHFxbHVWOW4zRmhVQUFBQUFTVVZPUks1Q1lJST0iLCAic2l6ZXMiOiAiMTkyeDE5MiIsICJ0eXBlIjogImltYWdlL3BuZyIsICJwdXJwb3NlIjogImFueSBtYXNrYWJsZSJ9LCB7InNyYyI6ICJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQWdBQUFBSUFDQUlBQUFCN0drT3RBQUFTa1VsRVFWUjRuTzNkVDZpbTR4L0g4V2QrTTB5SU9sTW9GcEprSXhheWtTS3lVVkt5WUVGS1NTUWkwakF6bXZHbkpGS1VVbElVS1lVc1ptSEJ3bUlXR21VeEN5WktLWVNpU01iTWJ6RWE0OHg1N3VmZi9lZTZyOC9ydFg0NDk1em52cjd2NjdyUHYwMXJhMnNUQVBMOGIrZ0xBR0FZQWdBUVNnQUFRZ2tBUUNnQkFBZ2xBQUNoQkFBZ2xBQUFoQklBZ0ZBQ0FCQktBQUJDQ1FCQUtBRUFDQ1VBQUtFRUFDQ1VBQUNFRWdDQVVBSUFFRW9BQUVJSkFFQW9BUUFJSlFBQW9RUUFJSlFBQUlRU0FJQlFBZ0FRU2dBQVFna0FRQ2dCQUFnbEFBQ2hCQUFnbEFBQWhCSUFnRkFDQUJCS0FBQkNDUUJBS0FFQUNDVUFBS0VFQUNDVUFBQ0VFZ0NBVUFJQUVFb0FBRUlKQUVBb0FRQUlKUUFBb1FRQUlKUUFBSVFTQUlCUUFnQVFTZ0FBUWdrQVFDZ0JBQWdsQUFDaEJBQWdsQUFBaEJJQWdGQUNBQkJLQUFCQ0NRQkFLQUVBQ0NVQUFLRUVBQ0NVQUFDRUVnQ0FVQUlBRUVvQUFFSUpBRUFvQVFBSUpRQUFvUVFBSU5TV29TOEFPdkh6enorMyt6L2N0bTFidS85REdOeW10Ylcxb2E4Qmx0SDZpRitGUERCR0FzQUlGRFhyNTZjS0ZFNEFLTkZJSjM0elBhQTBBa0FScXB6NHpmU0F3UWtBZ3drYyt0T0lBWU1RQUhwbDZNOGtCdlJHQU9pRHViOEVKYUJyQWtCWGhoMzZyVS9QeXY0NU1CRUFXdGZub0N4a0xBYitrNm1EQU5DT3JvZmc2QWFmVHdqbEV3QlcwdEdZcTNLNitWeFJHZ0ZnU1g3WnppcDg5aWlCQUxDWWRpZVhzVFh4S1dVNEFzQzgycHBUSmxRRG4yVDZKQURNMXNwVU1wSVc0bk5PRHdTQXFWYWZRUVpRSzd3UmRFUUEyTUNLRThlNDZZajNoWFlKQVAreHlvZ3hYM3JqYmFJVkFzQS96SlRSOFpheElnRmcrVGxpaUJUQ084aHlCQ0Nhd1ZFVDd5YUxFb0JReXcwTGsySVV2TG5NU1FBU0xURWdUSWZSOFM0emt3QmtNUlRTZU1kcElBQXBESUprM24wMkpBRDFzL2c1eXAzQU9nSlF1VVhYdkFWZlBiY0V4d2hBdGF4ekdyZzltQWhBclJaYTN0WjJMUGRKT0FHb2pTWE5vdHd6c1FTZ0t2T3ZaTXVZZGR3OGdRU2dFalp4ck01ZGxFWUFhbUR2Um92Y1Rqa0VZTnlzVlRyaTFrcnd2NkV2Z09WWm9uUm4vbnVtclQ5a1QvK2NBTVpxemxWbjlMTWlkMXJGQkdCOGJQenBtVnV1VmdJd01yWmpETVc5Vng5ZkF4Z1RLNUFCelhsZitaTEFpRGdCaklQUlR6bmNqZFZ3QWhnQjY0MmlPQXBVUXdCS1ovcFRJQTJvZzBkQVJadG4vUmo5RE1ndE9tcE9BT1d5dENqZlBIZWdjMEN4bkFCSzVMRVA0K0tPSFNrQktJNk5QeVBsMWgwZGo0REtZZ2t4WGg0SGpZNEFGTVQwWit3MFlGd0VvQlNtUDNYUWdCSHhOWUFpekZ3UFJqK2o0NjR1bnhQQThLd1RxalR6dm5VT0dKd0FETXowcDJJYVVEZ0JHSkxwVC9VMG9HUUNNQmpUbnhBYVVDd0JHSWJwVHhRTktKTUFETUQwSjVBR0ZFZ0ErbWI2RTBzRFNpTUF2VEw5Q2FjQlJSR0EvcGorTU5HQWtnaEFUMHgvT0VZRENpRUFmVEQ5WVIwTktJRUFkTTcwaHcxcHdPQUVvRnVtUHpUUWdHRUp3SkJNZjdBS0JpUUFIV3JldkxqdjRham10ZUFRMEIwQjZJcnBEL1BUZ0VFSVFDZE1mMWlVQnZSUEFOcG4rc055TktCbkF0QXkweDlXb1FGOUVnQ0FVQUxRSnR0L1dKMURRRzhFb0RXbVA3UkZBL29oQU8wdy9hRmRHdEFEQWVpYzZRL0xzWGE2SmdBdHNCbUIvbGwzcXhPQVZYbjRBOTN4SUtoVEFyQVMweCs2cGdIZEVZQ3VtUDdRRnF1cEl3S3dQRnNQS0lHVnVEUUJXSktIUDlBbkQ0SzZJQUR0TS8yaEMxWlc2d1JnR1EzYkRmY29kS2RoZlRrRUxFRUFGdVkrZ3pKWm00c1NnRGJaL2tQWHJMSVdDY0JpUFB5QndYa1ExQllCV0lCN0M4cG5uYzVQQU5waCt3OTlzdUphc1dsdGJXM29heGdIRDMvR2JwNk5vYmR5WEt6S0ZUa0J6TVdoRXNiRm1wMkhBS3pLUmdPR1l2V3RTQUJtYzh5RVl2bU9vRlVJQUVBb0FaakI5aDhLNXhDd05BRUFDQ1VBVFd6L1lSUWNBcFlqQUZPWi9qQWlHckFFQVFBSUpRQWJzLzJIMFhFSVdKUUFBSVFTZ0EzWS9zTklPUVFzUkFBQVFnbkFlcmIvTUdvT0FmTVRBSUJRQXZBZnR2OVFBWWVBT1FrQVFDZ0IrSmZ0UDFURElXQWVBZ0FRU2dEK1lmc1BsWEVJbUVrQUFFSUp3QXkyL3pCZTFtOHpBWmhNbkFjaGoxVS9FWUJtdGc4d2RsWnhBd0d3RVlCUTFyNEFUR1hqQUhXd2xxZEpENEF0QUNRTG53RHBBUUNJSlFBYmMyYUVtbGpSRzRvT1FQanBENWhrejRIb0FFeGpzd0Qxc2E1UGxCdUE1T3dEeDR1ZEJya0JBQWduQU9zNUowS3RyTzUxUWdNUWUrSUROcFE1RTBJRE1JME5BdFROR2orZUFBQ0VTZ3hBNWxrUGFCWTRHUklETUkyeklTU3cwbzhSQUlCUWNRRUlQT1VCYzBxYkQzRUJtTWFwRUhKWTcwY0pBRUFvQVFBSWxSV0F0QWQ4d0tLaXBrUldBS2J4UUJEU1dQVVRBUUNJRlJTQXFKTWRKN0xqWTA0NXN5SW9BTk9ZQ3h5VHMvS1pXUHNDQUJCTEFBQkNwUVRBMFI2WVg4akVTQW5BTkI0Q1FyTHdDWkFlQUlCWUFnQVFLaUlBSVkvemdCWWx6STJJQUV3VC92Z1BtR1RQZ2VnQUFDUVRBSUJRQWdBUXF2NEFUUHRLVHZLRFArQjQwNlpCOVY4SHJqOEFBR3hJQUFCQ0NRQkFLQUVBQ0ZWNUFLci9HZzdRcWJwblNPVUJtTWEzQUFISHk1d0pvUUVBUUFBQVFna0FRQ2dCQUFnbEFBQ2hhZzVBM2QrL0JmU2o0a2xTY3dDbXlmeCtMNkJaNEdSSURBQUFFd0VBaUNVQUFLRUVBQ0NVQUFDRUVnQ0FVQUlBRUVvQUFFSlZHNEJwUDd3WCtMTWVMS1RpSC90a3BtbnpvZGE3b3RvQXdEcnpyK0ZhVnp1c3MyWG9DNERPTFRIUWovNG56b3ZVelFtQXlxMnluWGNVb0c0Q1FNMVduK0FhUU1VRUFDQ1VBRkN0dGpidkRnSFVTZ0NvVTd0VFd3T29rZ0FBaFBKdG9IMnpsd1FLNFFRQWMxRnU2aU1BQUtFRUFDQ1VBQUNFRWdDQVVBSUFFRW9BQUVMNU9ZQysrUTNEL1dqOXV6YTljZFRIQ1FBZ2xBQUFoQklBNnRUdUV4dlBmNmlTQUZDdHRxYTI2VSt0QkFBZ2xBQlFzOVUzNzdiL1ZFd0FxTndxRTl6MHAyNStEb0Q2SFozakMvMWtnTkZQQWljQVVzdy8wMDEvUW14YVcxc2IraHE2TW0zSFozbXo0YjNoeGlCdGFIZ0VSS0phMXpNc3hDTWdnRkFDQUJCS0FBQkNDUUJBS0FFQUNDVUFBS0VFQUNCVVlnQmEvMk9CUUFVQ0owUE5BZkREUHNEcUtwNGtOUWNBZ0FZQ0FCQktBQUJDQ1FCQUtBRUFDQlVhZ01Edjl3SWFaTTZFeWdOUThmZHZBVDJvZTRaVUhnQUFwaEVBZ0ZBQ0FCQktBQUJDMVIrQWFWL0R5ZnlpUDNDaWFkT2c3cThBVHhJQ0FNQ0dCQUFnbEFBQWhJb09nQzhEQU1seklDSUExWDhsQjJoZHd0eUlDQUFBSnhJQWdGRHBBVWgrL0FlRVQ0Q1VBQ1E4emdQYUVqSXhVZ0lBd0RvQ0FCQktBTklmQWtJc2F6OG9BQ0VQOVlBVjVjeUtvQUFBY0R3Qm1FeWNCQ0dQVlQ5SkMwRE95UTVZVHRTVXlBb0FBTWNJQUVBb0FmaUhCNEtRdzNvL0tpNEFVUS80Z0lXa3pZZTRBQUJ3bEFEOHk2a1FFbGpweHlRR0lPMlVCOHdqY0RJa0JnQ0FpUUNzNDJ3SWRiUEdqeGNhZ01Dekh0QWdjeWFFQnFDQkRRTFV5dXBlUndBQVF1VUdJUFBFQjV3b2RocmtCcUNCY3lMVXg3bytVWFFBWXJNUEhKTThCNklEME1CbUFXcGlSVzlJQUFCQ3BRY2crZlFIaEUrQTlBQTBjR2FFT2xqTDAyd1orZ0tHdDIzYk52Y0g1ZHV5WmNzUFAveXcwSDl5N2JYWDd0Ky9mN2tQOTlWWFg4MnpPMzdycmJmdXZmZmU1VDdFNE1LMy94TW5nR2JDd0tqdDNMbHo2RXNZbmxYY1FBQW1FeHNCS25YVlZWZGRmZlhWUTE5Rm9hejZpUURNWlB2QXFPM2F0V3ZUcGsxRFg4VmdyTjltQWdBMXUvVFNTMis4OGNhaHI0SkNDY0EvR3M2RE5oR00ybU9QUGJabFMrSzNlelNzWE05L2poSUFxTndGRjF4dzIyMjNEWDBWbEVnQS91VVFRSzBlZWVTUlUwNDVaZWlyNkpYdC96d0VBT3AzOXRsbjMzMzMzVU5mQmNVUmdQOXdDS0JXOTk5Ly85cmEydEJYMFJQYi96a0pBRVE0NDR3ekhuamdnYUd2Z3JJSXdIb09BZFRxcnJ2dU91ZWNjNGEraXM3Wi9zOVBBQ0RGMXExYkgzMzAwYUd2Z29JSXdBWWNBcWpWcmJmZWV1R0ZGdzU5RlIyeS9WK0lBRUNRelpzM1AvNzQ0ME5mQmFVUWdJMDVCRkNyRzI2NDRiTExMaHY2S2pwaCs3OG9BWUE0dTNidEd2b1NLSUlBVE9VUXdFaDkvZlhYelMrNDhzb3JyN25tbW40dXBqZTIvMHNRZ0NZYXdCaTk5OTU3Qnc0Y2FIN056cDA3YS9vMTBhYi9jZ1FBYW5QNDhPRTllL1kwdithU1N5NjU2YWFiK3JrZWlpVUFNemdFTUVaNzkrN2R0MjlmODJ1MmI5OSswa2tuOVhNOW5iTDlYNW9BUUoyZWVPS0o1aGVjZi83NXQ5OStleS9YUXFFRVlEYUhBTVpvMzc1OWUvZnViWDdOd3c4L2ZPcXBwL1p6UFIyeC9WK0ZBS3hLQXlqV25qMTdEaDgrM1BDQ3M4NDY2NTU3N3VudGVscG45YTFJQU9aaUs4RVlIVGh3NEoxMzNtbCt6WDMzM1ZmbDdWM2xQNnAxQWpBdkQ0SVlvMmVlZWViUFAvOXNlTUhwcDUvKzRJTVA5blk5TGZMd1ozVUMwQTROb0V6ZmZ2dnRhNis5MXZ5YU8rKzg4OXh6eiszbmV0cGl4YlZDQUJaZ1c4RVlQZi84ODcvOTlsdkRDeXI3TmRIVzZmd0VZREVlQkRFNlAvMzAwMHN2dmRUOG1sdHV1ZVdpaXk3cTUzcFc1K0ZQV3dTZ1RScEFtVjUrK2VVZmYveXg0UVdiTjIvZXNXTkhiOWV6Q3F1c1JRS3dNRnNNUnVmMzMzOS83cm5ubWw5ei9mWFhYMzc1NWYxY1QwZXN6VVVKd0RJOENHSjBYbi85OVcrKythYjVOZVgvbW1nUGY5b2xBTzNUQUFyMDExOS9QZjMwMDgydnVlS0tLNjY3N3JwK3JtY0pWbGJyQkdCSnpkc05keW9GZXZmZGQ3LzQ0b3ZtMSt6WXNhUE1YeFBkdktacy81Y2pBTXR6enpFdVI0NGNtZmxyb2krKytPS2JiNzY1bit0cGk1VzROQUhvaWtNQUJmcm9vNDgrL2ZUVDV0ZHMzNzc5NUpOUDd1ZDY1bVExZFVRQVZ1SkJFS016ODlkRW4zZmVlWGZjY1VjZmx6SWZEMys2SXdDcjBnREc1YlBQUHZ2d3d3K2JYL1BRUXc5dDNicTFuK3RwWnZwM1NnQmE0QzVrWFBiczJmUDMzMzgzdk9ETU04ODg3YlRUZXJ1ZTVWaDNxeE9BemprRVVKb3Z2L3p5N2JmZkh2b3Fack4ydWlZQTdmQWdpSEdaK1d1aUIrZmhUdzhFb0RVYXdJaDg5OTEzcjc3NjZ0QlhNWlhwM3c4QmFKTUdNQ0l2dlBEQ3I3LytPdlJWYk1EMDc0MEFRS2hmZnZubHhSZGZIUG9xR0pJQXRNd2hnQkY1NVpWWHZ2LysrNkd2NGo5cy8vc2tBTzNUQU1iaWp6LytlUGJaWjRlK2luK1ovajBUZ0U1b0FHUHh4aHR2SER4NGNPaXJtRXhNL3lFSVFGYzBnRkU0ZE9qUVUwODlOZlJWbVA3REVJQU9hUUNqOFA3NzczLysrZWNEWG9EcFB4UUJHSklHVUlJalI0N3MzcjE3cUk5dUZReElBTG8xYy9QaTdxY0VIMy84OFNlZmZOTC94NTE1Lzl2K2Qwb0FPcWNCak1MdTNidVBIRG5TNTBjMC9RY25BSDNRQU1xM2YvLytEejc0b0xjUFovcVhRQUI2b2dHVTc4a25uengwNkZBUEg4ajBMNFFBOUVjREtOekJnd2ZmZlBQTnJqK0s2VitPVFd0cmEwTmZReFozUDhuYy8wVnhBdWliY3dDeFRQL1NDTUFBTklCQXBuK0JCR0FZR2tBVTA3OU1BakFZRFNDRTZWOHNBUmlTQmxBOTA3OWtBakF3RGFCaXBuL2hCR0I0R2tDVlRQL3krVG1BVXN3ejVTMFlSc0hOUEJaT0FLV1laejA0Q2xBKzAzOUVCS0FnR3NEWW1mN2pJZ0JsMFFER3kvUWZIVjhES05HY0k5NWFvaER1MkpFU2dITFpUekVLYnRUeDhnaW9YQjRIVVQ3VGY5U2NBRXJuY0UyWjNKa1ZjQUlvM1p6cngxR0FQcG4rZFJDQUVkQUFpbUw2VjhNam9ER3g4QmlXTzdBeVRnQmo0aWpBZ0V6LytqZ0JqTS84ODkxU3BCVnV1Vm9Kd0ZqWmp0RVBkMXJGQkdERTdNdm9sQnVzZXI0R01HTHpyenBmRldCUnBuOENKNEFhV0t1MHlPMlVRd0Fxc2RBZTM3cGxRKzZpTkFKUUZYczNsdWJtQ1NRQXRiR0pZMUh1bVZnQ1VDZExtbm00VDhJSlFMVVcvYzRmeXp1SzI0T0pBRlRQT21jZHR3VEhDRUQ5bHZnaEFHdStTdTRFMWhHQUZCWi9NdTgrR3hLQUxBWkJHdTg0RFFRZ2thR1F3THZNVEFJUWFybmZEbVJBaklJM2x6a0pRTFNsZjBtY1lWRWc3eWFMRWdBTWp0SHpEckljQWVBZnEvekthSE5rRU40eVZpUUEvSWVaTWdyZUpsb2hBR3hneFQ4Z1k4UjB4UHRDdXdTQXFWYi9PMkltVGl1OEVYUkVBSml0bGI4b2FRWXR4T2VjSGdnQTgycnJEd3ViU2cxOGt1bVRBTENZZHYrK3ZEazE4U2xsT0FMQWt0b2RXNU93eWVXelJ3a0VnSlcwUHNpT3FuS2MrVnhSR2dHZ0hSMU50Mk5HTitaOFFpaWZBTkN5cmdmZjhRb1pnb0gvWk9vZ0FIU2x6N0Y0b3RZSFpXWC9ISmdJQVAwWWRucU9sS0ZQMXdTQVhpbkJUT1krdlJFQUJpTUd4eGo2REVJQUtFSmdEQXg5QmljQWxLaktIcGo0bEVZQUdJR1I5c0RFcDNBQ3dGZ1ZWUVd6bmpFU0FPcmtsKzNBVEFJQUVPcC9RMThBQU1NUUFJQlFBZ0FRU2dBQVFna0FRQ2dCQUFnbEFBQ2hCQUFnbEFBQWhCSUFnRkFDQUJCS0FBQkNDUUJBS0FFQUNDVUFBS0VFQUNDVUFBQ0VFZ0NBVUFJQUVFb0FBRUlKQUVBb0FRQUlKUUFBb1FRQUlKUUFBSVFTQUlCUUFnQVFTZ0FBUWdrQVFDZ0JBQWdsQUFDaEJBQWdsQUFBaEJJQWdGQUNBQkJLQUFCQ0NRQkFLQUVBQ0NVQUFLRUVBQ0NVQUFDRUVnQ0FVQUlBRUVvQUFFSUpBRUFvQVFBSUpRQUFvUVFBSUpRQUFJUVNBSUJRQWdBUVNnQUFRZ2tBUUNnQkFBZ2xBQUNoQkFBZ2xBQUFoQklBZ0ZBQ0FCQktBQUJDQ1FCQUtBRUFDQ1VBQUtFRUFDQ1VBQUNFRWdDQVVBSUFFRW9BQUVJSkFFQW9BUUFJOVg5SnR6TlRCbnR0dWdBQUFBQkpSVTVFcmtKZ2dnPT0iLCAic2l6ZXMiOiAiNTEyeDUxMiIsICJ0eXBlIjogImltYWdlL3BuZyIsICJwdXJwb3NlIjogImFueSBtYXNrYWJsZSJ9XX0="/>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js" crossorigin="anonymous"></script>
 <style>
-  :root {
-    --bg: #0f1115;
-    --panel: #171a21;
-    --panel-border: #262a35;
-    --text: #e6e8ec;
-    --text-dim: #9aa1ac;
-    --accent: #5b8def;
-    --accent-hover: #4a78d6;
-    --success: #34c38f;
-    --error: #f06565;
-    --input-bg: #0f1115;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    min-height: 100vh;
-    background: var(--bg);
-    color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-    display: flex;
-    justify-content: center;
-    padding: 40px 16px;
-  }
-  .card {
-    width: 100%;
-    max-width: 520px;
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    border-radius: 14px;
-    padding: 28px 28px 24px;
-  }
-  h1 {
-    font-size: 18px;
-    margin: 0 0 4px;
-    font-weight: 600;
-  }
-  .subtitle {
-    color: var(--text-dim);
-    font-size: 13px;
-    margin: 0 0 24px;
-    line-height: 1.5;
-  }
-  label {
-    display: block;
-    font-size: 13px;
-    color: var(--text-dim);
-    margin: 16px 0 6px;
-  }
-  input[type="text"], input[type="password"], select {
-    width: 100%;
-    background: var(--input-bg);
-    border: 1px solid var(--panel-border);
-    border-radius: 8px;
-    color: var(--text);
-    padding: 10px 12px;
-    font-size: 14px;
-    outline: none;
-    transition: border-color 0.15s;
-    font-family: inherit;
-  }
-  select {
-    appearance: none;
-    -webkit-appearance: none;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa1ac' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-    background-size: 16px;
-    padding-right: 32px;
-  }
-  select option {
-    background: var(--panel);
-    color: var(--text);
-  }
-  input[type="text"]:focus, input[type="password"]:focus, select:focus {
-    border-color: var(--accent);
-  }
-  .row {
-    display: flex;
-    gap: 12px;
-  }
-  .row > div {
-    flex: 1;
-  }
-  .file-drop {
-    margin-top: 6px;
-    border: 1.5px dashed var(--panel-border);
-    border-radius: 8px;
-    padding: 20px 14px;
-    text-align: center;
-    cursor: pointer;
-    transition: border-color 0.15s, background 0.15s;
-    font-size: 13px;
-    color: var(--text-dim);
-  }
-  .file-drop:hover, .file-drop.dragover {
-    border-color: var(--accent);
-    background: rgba(91, 141, 239, 0.06);
-  }
-  .file-drop .fname {
-    color: var(--text);
-    font-weight: 500;
-    margin-top: 4px;
-  }
-  input[type="file"] { display: none; }
-  button {
-    width: 100%;
-    margin-top: 24px;
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 12px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.15s;
-  }
-  button:hover:not(:disabled) { background: var(--accent-hover); }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
-  .status {
-    margin-top: 14px;
-    font-size: 13px;
-    line-height: 1.6;
-    padding: 10px 12px;
-    border-radius: 8px;
-    display: none;
-  }
-  .status.show { display: block; }
-  .status.info { background: rgba(91, 141, 239, 0.1); color: #9db8f2; }
-  .status.success { background: rgba(52, 195, 143, 0.1); color: var(--success); }
-  .status.error { background: rgba(240, 101, 101, 0.1); color: var(--error); }
-  .hint {
-    font-size: 11.5px;
-    color: var(--text-dim);
-    margin-top: 4px;
-  }
-  a { color: var(--accent); }
-  .link-btn {
-    width: auto;
-    margin-top: 10px;
-    background: none;
-    color: var(--accent);
-    padding: 0;
-    font-size: 13px;
-    font-weight: 500;
-    text-decoration: underline;
-  }
-  .link-btn:hover:not(:disabled) { background: none; color: var(--accent-hover); }
-  .manage-panel {
-    margin-top: 12px;
-    border: 1px solid var(--panel-border);
-    border-radius: 10px;
-    padding: 14px;
-  }
-  .app-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-bottom: 4px;
-  }
-  .app-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 8px 10px;
-    background: var(--input-bg);
-    border: 1px solid var(--panel-border);
-    border-radius: 8px;
-    font-size: 13px;
-  }
-  .app-row .app-info {
-    overflow: hidden;
-  }
-  .app-row .app-name {
-    color: var(--text);
-    font-weight: 500;
-  }
-  .app-row .app-repo {
-    color: var(--text-dim);
-    font-size: 11.5px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .app-row .app-delete {
-    flex-shrink: 0;
-    width: auto;
-    margin-top: 0;
-    background: rgba(240, 101, 101, 0.12);
-    color: var(--error);
-    padding: 6px 10px;
-    font-size: 12px;
-    font-weight: 600;
-    border-radius: 6px;
-  }
-  .app-row .app-delete:hover:not(:disabled) { background: rgba(240, 101, 101, 0.22); }
-  .empty-list {
-    color: var(--text-dim);
-    font-size: 13px;
-    padding: 8px 0;
-  }
-  .add-app-btn {
-    margin-top: 14px;
-  }
-  .footer-note {
-    margin-top: 20px;
-    font-size: 11.5px;
-    color: var(--text-dim);
-    line-height: 1.6;
-    border-top: 1px solid var(--panel-border);
-    padding-top: 14px;
-  }
+:root{
+  --ink:#111;--ink2:#555;--ink3:#aaa;--rule:#e4e4e4;--bg:#fafaf8;
+  --accent:#d63800;--mono:'DM Mono',monospace;
+  --sans:'Noto Sans JP',-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:var(--sans);background:var(--bg);min-height:100vh;color:var(--ink)}
+button,input,textarea,select{font-family:var(--sans)}
+button{cursor:pointer}
+button:active{opacity:.75}
+input:focus,textarea:focus{outline:none}
+#app{min-height:100vh;display:flex;flex-direction:column}
+
+/* ── AppBar ── */
+.appbar{background:var(--ink);color:white;padding:13px 18px;font-size:15px;font-weight:300;letter-spacing:.05em;flex-shrink:0;position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between}
+.appbar-title{font-size:15px;font-weight:400;color:rgba(255,255,255,.7);letter-spacing:.04em}
+.appbar-right{font-family:var(--mono);font-size:15px;color:rgba(255,255,255,.45);letter-spacing:.04em}
+
+/* ── Tabs ── */
+.tabs{display:flex;background:white;border-bottom:1px solid var(--rule);flex-shrink:0;position:sticky;top:43px;z-index:40}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;padding:11px 0;gap:5px;font-size:13px;font-weight:400;color:var(--ink3);border-bottom:2px solid transparent;letter-spacing:.06em}
+.tab.active{color:var(--ink);border-bottom-color:var(--ink)}
+.tab svg{width:20px;height:20px;stroke:currentColor;stroke-width:1.5;fill:none}
+
+/* ── Status bar ── */
+.status-bar{background:white;padding:8px 18px;border-bottom:1px solid var(--rule);font-size:14px;color:var(--ink3);display:flex;align-items:center;gap:7px;flex-shrink:0;position:sticky;top:92px;z-index:35;letter-spacing:.04em}
+.status-dot{width:6px;height:6px;border-radius:50%}
+.status-dot.running{background:#3a7;animation:pulse 2s infinite}
+.status-dot.paused{background:#c80}
+.status-dot.emergency{background:var(--accent);animation:pulse .8s infinite}
+.status-dot.waiting{background:var(--ink3)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@-webkit-keyframes spin{to{-webkit-transform:rotate(360deg)}}
+
+/* ── Content ── */
+.content{flex:1;overflow-y:auto}
+
+/* ── Cards (準備タブ用) ── */
+.section-title{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:12px;letter-spacing:.03em}
+.card{background:white;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:16px 18px;margin-bottom:8px}
+.field-label{font-size:12px;color:var(--ink3);margin-bottom:6px;font-weight:400;letter-spacing:.1em;text-transform:uppercase}
+.field-inp{width:100%;border:none;border-bottom:1.5px solid var(--rule);background:transparent;padding:10px 0;font-size:18px;color:var(--ink)}
+.field-inp:focus{border-bottom-color:var(--ink)}
+
+/* ── Buttons ── */
+.btn{border:none;border-radius:4px;font-weight:400;cursor:pointer;letter-spacing:.04em;transition:opacity .1s}
+.btn-primary{background:var(--ink);color:white;padding:13px 22px;font-size:15px}
+.btn-outline{background:white;border:1px solid var(--ink);color:var(--ink);padding:11px 18px;font-size:14px}
+.btn-green{background:#2e5;color:white;padding:11px 18px;font-size:14px}
+.btn-danger{background:var(--accent);color:white;padding:11px 18px;font-size:14px}
+.btn-amber{background:#c80;color:white;padding:11px 18px;font-size:14px}
+.btn-gray{background:#eee;color:var(--ink2);padding:11px 18px;font-size:14px;border:1px solid var(--rule)}
+.btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+
+/* ── CSV info ── */
+.csv-info{font-size:12px;color:var(--ink2);line-height:2;padding:12px;background:#f5f5f3;border-radius:4px}
+.csv-info b{color:var(--ink)}
+
+/* ── Share ── */
+.qr-wrap{text-align:center;padding:10px 0}
+.qr-wrap img{border-radius:8px;border:1px solid var(--rule);max-width:160px}
+
+/* ── Recovery ── */
+.recovery-row{display:flex;gap:8px;align-items:center}
+.recovery-inp{flex:1;border:1px solid var(--rule);border-radius:4px;padding:10px 14px;font-size:15px;background:white}
+
+/* ── Progress (進行タブ) ── */
+.prog-header{padding:16px 18px 0;display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.prog-title{font-size:16px;font-weight:700;color:var(--ink);letter-spacing:.03em}
+.ctrl-row{display:flex;gap:8px;flex-wrap:wrap;padding:12px 18px 10px;border-bottom:1px solid var(--rule)}
+
+/* ── Section label ── */
+.section-label{padding:16px 18px 6px;font-size:12px;color:var(--ink3);letter-spacing:.12em;text-transform:uppercase;border-bottom:1px solid var(--rule);scroll-margin-top:140px}
+
+/* ── Program row (深津スタイル) ── */
+.prog-row{display:grid;grid-template-columns:52px 1fr auto 28px;align-items:center;min-height:76px;padding:14px 18px;border-bottom:1px solid var(--rule);gap:10px;background:white;transition:background .1s;position:relative}
+.prog-row.done-row{background:#f7fdf6}
+.prog-row.estimated-row{background:repeating-linear-gradient(135deg,#f7f7f7 0px,#f7f7f7 6px,#fafafa 6px,#fafafa 12px);opacity:.8}
+.prog-row.done-row .prog-name{text-decoration:line-through;text-decoration-color:var(--ink3);color:var(--ink3)}
+.prog-row.next-row{background:white}
+.prog-row.next-row::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
+.prog-row.next-row .prog-name{font-weight:700}
+.prog-row.featured-row{background:linear-gradient(135deg,#fffbeb,#fef3c7);border-left:4px solid #f59e0b}
+.prog-row.featured-row .prog-name{color:#92400e}
+.featured-star{font-size:18px;color:#d1d5db;cursor:pointer;padding:2px;border:none;background:none;flex-shrink:0;line-height:1;align-self:center;justify-self:center}
+.featured-star.on{color:#f59e0b}
+.featured-badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;color:#92400e;background:#fde68a;border-radius:4px;padding:1px 5px;font-weight:700;margin-top:2px}
+
+/* ── Row ボタン列 ── */
+.prog-btn-col{display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.start-btn{width:46px;height:46px;border-radius:50%;background:var(--ink);color:white;font-size:18px;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:transform .1s}
+.start-btn:active{transform:scale(.9)}
+.start-btn.paused-state{background:#ccc;cursor:default}
+.check-mark{width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#3a7;flex-shrink:0;cursor:pointer}
+.check-mark:hover{background:#f0f8f0;border-radius:50%}
+
+/* ── Row 情報列 ── */
+.prog-info{min-width:0}
+.prog-sched{font-family:var(--mono);font-size:12px;color:var(--ink3);letter-spacing:.04em;margin-bottom:3px}
+.prog-name{font-size:22px;font-weight:400;color:var(--ink);letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
+.prog-row.next-row .prog-name{font-size:25px}
+.prog-target{font-size:13px;color:var(--ink3);margin-top:2px}
+.started-meta{font-family:var(--mono);font-size:13px;color:var(--ink3);margin-top:3px}
+
+/* ── Row 右列（時刻・遅延） ── */
+.time-right{text-align:right;flex-shrink:0}
+.time-label{font-size:11px;color:var(--ink3);letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:2px}
+.time-val{font-family:var(--mono);font-size:30px;font-weight:500;color:var(--ink2);letter-spacing:-.02em;line-height:1}
+.prog-row.next-row .time-val{font-size:38px;color:var(--ink)}
+.prog-row.done-row .time-val{font-size:19px;color:var(--ink3)}
+.delay-tag{font-family:var(--mono);font-size:13px;color:var(--accent);display:block;margin-top:3px;letter-spacing:.03em}
+.early-tag{font-family:var(--mono);font-size:13px;color:#3a7;display:block;margin-top:3px}
+
+/* ── Modal ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;display:flex;align-items:flex-end;justify-content:center}
+.modal-bg.center{align-items:center;padding:20px}
+.modal{background:white;border-radius:12px 12px 0 0;padding:24px;width:100%;max-width:480px}
+.modal.center-modal{border-radius:12px;max-width:360px;width:100%}
+.modal-title{font-size:18px;font-weight:700;margin-bottom:8px;color:var(--ink)}
+.modal-sub{font-size:15px;color:var(--ink2);margin-bottom:20px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end}
+.modal-btn{border:none;background:none;font-size:18px;font-weight:400;padding:10px 14px;border-radius:6px;cursor:pointer;color:var(--ink2)}
+.modal-btn.edit-time,.modal-btn.close{color:var(--ink)}
+.modal-btn.cancel-start{color:var(--accent)}
+
+/* ── Clock picker ── */
+.clock-wrap{display:flex;flex-direction:column;align-items:center;gap:12px}
+.clock-display{font-size:40px;font-weight:400;color:var(--ink);font-family:var(--mono);letter-spacing:2px}
+.clock-svg{touch-action:none}
+.clock-mode-row{display:flex;gap:8px;justify-content:center}
+.clock-mode-btn{padding:6px 18px;border-radius:4px;border:1px solid var(--rule);font-size:14px;cursor:pointer;background:white;color:var(--ink2)}
+.clock-mode-btn.active{background:var(--ink);color:white;border-color:var(--ink)}
+.clock-mode-btn.inactive{background:white;color:var(--ink2)}
+
+/* ── FB setup ── */
+.setup-wrap{max-width:480px;margin:0 auto;padding:16px}
+.step-row{display:flex;gap:12px;margin-bottom:14px}
+.step-n{width:24px;height:24px;border-radius:50%;background:var(--ink);color:white;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.step-body{flex:1}
+.step-title{font-size:14px;font-weight:700;margin-bottom:3px}
+.step-desc{font-size:12px;color:var(--ink2);line-height:1.7}
+.err-msg{color:var(--accent);font-size:12px;margin-top:6px}
+
+/* ── Spinner ── */
+.spinner{width:36px;height:36px;border:3px solid var(--rule);border-top-color:var(--ink);border-radius:50%;animation:spin 1s linear infinite}
+
+/* ── Viewer badge ── */
+.viewer-chip{display:inline-flex;align-items:center;gap:5px;background:#eee;color:var(--ink2);border-radius:4px;padding:4px 10px;font-size:12px;font-weight:400;border:1px solid var(--rule)}
+
+/* ── Emergency overlay ── */
+.emergency-overlay{background:var(--accent);color:white;padding:14px 18px;text-align:center;font-weight:700;font-size:16px;letter-spacing:.08em}
+.paused-overlay{background:#c80;color:white;padding:14px 18px;text-align:center;font-weight:700;font-size:16px;letter-spacing:.08em}
+
+/* ── iPad (768px+) ── */
+@media(min-width:768px){
+  .appbar{padding:18px 32px;font-size:17px}
+  .tab{font-size:15px;padding:14px 0}
+  .tab svg{width:24px;height:24px}
+  .status-bar{font-size:16px;padding:12px 32px;top:98px}
+  .content{font-size:16px}
+  .card{padding:20px 28px}
+  .section-label{padding:22px 32px 10px;font-size:13px}
+  .prog-row{grid-template-columns:72px 1fr auto 36px;min-height:96px;padding:20px 32px;gap:14px}
+  .prog-name{font-size:28px}
+  .prog-row.next-row .prog-name{font-size:34px}
+  .prog-sched{font-size:14px}
+  .prog-target{font-size:15px}
+  .start-btn{width:60px;height:60px;font-size:24px}
+  .check-mark{width:60px;height:60px;font-size:26px}
+  .time-val{font-size:32px}
+  .prog-row.next-row .time-val{font-size:42px}
+  .prog-row.done-row .time-val{font-size:20px}
+  .delay-tag,.early-tag{font-size:15px}
+  .ctrl-row{padding:14px 28px 12px;gap:10px}
+  .prog-header{padding:18px 28px 0}
+  .prog-title{font-size:16px}
+  .btn-primary,.btn-danger,.btn-amber{font-size:16px;padding:14px 24px}
+  .btn-outline,.btn-green,.btn-gray{font-size:14px;padding:12px 18px}
+  .tabs{top:51px}
+}
 </style>
 </head>
 <body>
-<div class="card">
-  <h1>GitHub 自動アップローダー</h1>
-  <p class="subtitle">ファイルを選んでリポジトリ情報を入力し、ボタン一つでコミット＆プッシュします。すべてこのページ内（ブラウザ）で完結し、外部サーバーは経由しません。</p>
-
-  <label for="token">Personal Access Token</label>
-  <div class="row" style="align-items: flex-start;">
-    <div style="flex: 1;">
-      <input type="password" id="token" name="gh_pat_no_autofill" placeholder="github_pat_xxxxxxxxxxxxxxxxxxxx" autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true">
-    </div>
-    <div style="flex: 0 0 auto;">
-      <button type="button" id="saveTokenBtn" style="margin-top:0; width:auto; padding:10px 16px;">保存</button>
-    </div>
-  </div>
-  <div class="hint" id="tokenSaveStatus">保存されているトークンはありません。</div>
-  <div class="hint">GitHub → Settings → Developer settings → Fine-grained tokens で発行（対象リポジトリの Contents: Read and write 権限）。「保存」を押すとこのブラウザにのみ保存され、次回以降は自動で読み込まれます。アップロード時は常に保存済みのトークンが使われるため、別のトークンに切り替える場合は入力後に必ず「保存」を押してください。<a href="#" id="clearTokenLink">保存したトークンを削除</a></div>
-
-  <div class="row">
-    <div>
-      <label for="repoSelect">アプリを選択</label>
-      <select id="repoSelect"></select>
-    </div>
-    <div>
-      <label for="branch">ブランチ</label>
-      <input type="text" id="branch" placeholder="main" value="main">
-    </div>
-  </div>
-
-  <button type="button" class="link-btn" id="toggleManageBtn">＋ アプリの追加・削除</button>
-  <div class="manage-panel" id="managePanel" style="display:none;">
-    <div class="app-list" id="appList"></div>
-
-    <label for="newAppName">アプリ名</label>
-    <input type="text" id="newAppName" placeholder="例：のりあいGO">
-
-    <label for="newAppRepo">リポジトリ（owner/repo または GitHub の URL）</label>
-    <input type="text" id="newAppRepo" placeholder="sasaki0369/my-app">
-
-    <button type="button" class="add-app-btn" id="addAppBtn">アプリを追加</button>
-  </div>
-
-  <label for="path" id="pathLabel">リポジトリ内の配置パス</label>
-  <input type="text" id="path" placeholder="index.html" value="index.html">
-  <div class="hint" id="pathHint">1ファイルのみ選択時は、このパスがそのままファイル名として使われます。複数ファイル選択時は、ここは配置先フォルダ（空欄ならリポジトリ直下）として扱われ、各ファイルは元のファイル名のまま配置されます。</div>
-
-  <label for="message">コミットメッセージ（任意）</label>
-  <input type="text" id="message" placeholder="Update index.html">
-
-  <label>アップロードするファイル（複数選択可）</label>
-  <div class="file-drop" id="dropZone">
-    クリックまたはドラッグ＆ドロップでファイルを選択（複数可）
-    <div class="fname" id="fileName"></div>
-  </div>
-  <input type="file" id="fileInput" multiple>
-
-  <button id="uploadBtn" disabled>GitHub にアップロード</button>
-
-  <div class="status" id="status"></div>
-
-  <div class="footer-note">
-    このページはGitHub Pagesで公開されていますが、ページ自体にトークンは埋め込まれていません。入力したトークンはこの端末のブラウザ内（localStorage）にのみ保存され、GitHub API以外には送信されません。共有端末で使う場合は、使い終わったら上の「保存したトークンを削除」を押すか、GitHub側でトークンを失効させることをおすすめします。
-  </div>
-</div>
-
+<div id="app"></div>
 <script>
-  const DEFAULT_REPOS = [
-    { owner: 'sasaki0369', repo: 'noriai-go',          label: 'のりあいGO' },
-    { owner: 'sasaki0369', repo: 'mochimono-check',    label: '持ち物チェック' },
-    { owner: 'sasaki0369', repo: 'nomimemo',           label: '飲みメモ' },
-    { owner: 'sasaki0369', repo: 'hokan-memo',         label: 'しまった場所メモ' },
-    { owner: 'sasaki0369', repo: 'gencho-memo',        label: '現場メモ' },
-    { owner: 'sasaki0369', repo: 'ganttchart',         label: 'やることガントチャート' },
-    { owner: 'sasaki0369', repo: 'clip-app',           label: 'Clip' },
-    { owner: 'sasaki0369', repo: 'okusuritechou',      label: 'お薬手帖' },
-    { owner: 'sasaki0369', repo: 'visit-memo',         label: '訪問録' },
-    { owner: 'sasaki0369', repo: 'sasayaki-log',       label: 'ささやきログ' },
-    { owner: 'sasaki0369', repo: 'idea-box',           label: 'アイデア箱' },
-    { owner: 'sasaki0369', repo: 'note-log',           label: 'noteろぐ' },
-    { owner: 'sasaki0369', repo: 'kaihi-pay',          label: '会費ペイ受付' },
-    { owner: 'sasaki0369', repo: 'which-like',         label: 'どっち似？' },
-    { owner: 'sasaki0369', repo: 'ogawa-esports-fes',  label: 'OeSF' },
-    { owner: 'sasaki0369', repo: 'gohan-calendar',     label: 'ご飯カレンダー' },
-    { owner: 'sasaki0369', repo: 'yakuinkai',          label: '役員会受付' },
-    { owner: 'sasaki0369', repo: 'daredakke',          label: '誰だっけ？' },
-    { owner: 'sasaki0369', repo: 'event-now',          label: 'イベントNOW' }
-  ];
+var __EMBEDDED_CFG__={"apiKey":"AIzaSyBf5AlMcg8CCmLlhWzpEvk6-rpfzkZj6Xs","authDomain":"event-now2.firebaseapp.com","databaseURL":"https://event-now2-default-rtdb.firebaseio.com","projectId":"event-now2","storageBucket":"event-now2.firebasestorage.app","messagingSenderId":"716003781272","appId":"1:716003781272:web:0beae136cf9d4e26a07eed"}; // EVTM_EMBEDDED_CFG
 
-  const APP_LIST_KEY = 'ghUploaderAppList';
+// 全エラーをキャッチして画面表示（Safari/iPad対応）
+window.onerror=function(msg,src,line){
+  // "Script error." line:0 はCDNスクリプトのクロスオリジン偽エラー → 無視
+  if(!msg||String(msg).indexOf('Script error')>=0||line===0)return false;
+  try{
+    var d=document.getElementById('app')||document.body;
+    d.innerHTML='<div style="padding:20px;font-family:sans-serif;color:#dc2626;background:white">'
+      +'<b>エラー</b><br>'+String(msg)+'<br><small>line:'+line+'</small></div>';
+  }catch(e){}
+  return false;
+};
 
-  function loadAppList() {
-    try {
-      const saved = JSON.parse(localStorage.getItem(APP_LIST_KEY));
-      if (Array.isArray(saved) && saved.length) return saved;
-    } catch (e) {
-      // 壊れたデータなどは無視してデフォルトにフォールバック
-    }
-    return DEFAULT_REPOS.slice();
-  }
-
-  function saveAppList(list) {
-    try {
-      localStorage.setItem(APP_LIST_KEY, JSON.stringify(list));
-    } catch (e) {
-      // localStorage が使えない環境では保存をあきらめる
-    }
-  }
-
-  // 初回アクセス時、まだ何も保存されていなければデフォルト一覧を保存しておく
-  try {
-    if (!localStorage.getItem(APP_LIST_KEY)) saveAppList(DEFAULT_REPOS.slice());
-  } catch (e) { /* noop */ }
-
-  function parseRepoInput(raw) {
-    let s = raw.trim();
-    s = s.replace(/^https?:\/\/github\.com\//i, '');
-    s = s.replace(/\.git\/?$/i, '');
-    s = s.replace(/\/+$/, '');
-    const m = s.match(/^([\w.-]+)\/([\w.-]+)$/);
-    if (!m) return null;
-    return { owner: m[1], repo: m[2] };
-  }
-
-  const TOKEN_KEY = 'ghUploaderToken';
-  const tokenInput = document.getElementById('token');
-  const clearTokenLink = document.getElementById('clearTokenLink');
-  const saveTokenBtn = document.getElementById('saveTokenBtn');
-  const tokenSaveStatus = document.getElementById('tokenSaveStatus');
-
-  function maskToken(value) {
-    if (value.length <= 8) return '••••';
-    return value.slice(0, 4) + '…' + value.slice(-4);
-  }
-
-  function updateTokenSaveStatus() {
-    let saved = null;
-    try {
-      saved = localStorage.getItem(TOKEN_KEY);
-    } catch (e) {
-      tokenSaveStatus.textContent = 'このブラウザではトークンの保存機能が利用できません（localStorage無効）。';
-      tokenSaveStatus.style.color = 'var(--error)';
-      return;
-    }
-    if (saved) {
-      tokenSaveStatus.textContent = '✓ 保存済み（' + maskToken(saved) + '）';
-      tokenSaveStatus.style.color = 'var(--success)';
-    } else {
-      tokenSaveStatus.textContent = '保存されているトークンはありません。入力後「保存」を押してください。';
-      tokenSaveStatus.style.color = '';
-    }
-  }
-
-  function loadSavedToken() {
-    try {
-      const saved = localStorage.getItem(TOKEN_KEY);
-      if (saved) tokenInput.value = saved;
-    } catch (e) {
-      // localStorage が使えない環境では自動読込をあきらめる
-    }
-    updateTokenSaveStatus();
-  }
-
-  function saveToken(value) {
-    try {
-      if (value) {
-        localStorage.setItem(TOKEN_KEY, value);
-      } else {
-        localStorage.removeItem(TOKEN_KEY);
-      }
-    } catch (e) {
-      showStatus('error', 'トークンの保存に失敗しました。このブラウザでlocalStorageが無効になっている可能性があります。');
-      return;
-    }
-    updateTokenSaveStatus();
-  }
-
-  loadSavedToken();
-
-  saveTokenBtn.addEventListener('click', () => {
-    const value = tokenInput.value.trim();
-    if (!value) {
-      showStatus('error', '保存するトークンを入力してください。');
-      return;
-    }
-    saveToken(value);
-    showStatus('success', 'トークンを保存しました。');
+// ══ DOM helper ══
+var _app=document.getElementById('app');
+function render(node){_app.innerHTML='';if(node)_app.appendChild(node);}
+function el(tag,attrs,ch){
+  var e=document.createElement(tag);
+  if(attrs){Object.keys(attrs).forEach(function(k){
+    if(k==='style'&&typeof attrs[k]==='object'){Object.assign(e.style,attrs[k]);}
+    else if(k.slice(0,2)==='on'&&typeof attrs[k]==='function'){e.addEventListener(k.slice(2).toLowerCase(),attrs[k]);}
+    else if(k==='className'){e.className=attrs[k];}
+    else if(k==='readOnly'){e.readOnly=true;}
+    else if(k==='disabled'){e.disabled=attrs[k];}
+    else{try{e.setAttribute(k,attrs[k]);}catch(er){}}
+  });}
+  if(ch!=null)(Array.isArray(ch)?ch:[ch]).forEach(function(c){
+    if(c==null||c===false||c==='')return;
+    e.appendChild(typeof c==='string'||typeof c==='number'?document.createTextNode(String(c)):c);
   });
+  return e;
+}
+// イベント名をすべての表示箇所に反映するユーティリティ
+function applyEventName(name){
+  var t1=document.getElementById('appbar-title-el');
+  var t2=document.getElementById('prog-title-el');
+  var t3=document.getElementById('setup-eventname-inp');
+  if(t1)t1.textContent=name;
+  if(t2)t2.textContent='進行（'+name+'）';
+  if(t3)t3.value=name;
+}
 
-  clearTokenLink.addEventListener('click', (e) => {
-    e.preventDefault();
-    tokenInput.value = '';
-    saveToken('');
-    showStatus('info', '保存したトークンを削除しました。');
+function uid(){return Math.random().toString(36).slice(2,9);}
+function getBase(){return location.href.split('#')[0];}
+function parseHash(){
+  try{
+    var h=location.hash.slice(1);if(!h)return{mode:'admin'};
+    var p=h.split(':');
+    if(p[0]==='op'&&p[1]&&p[2])return{mode:'operator',eventId:p[1],opKey:p[2]};
+    if(p[0]==='view'&&p[1])return{mode:'viewer',eventId:p[1]};
+    if(p[0]==='manage'&&p[1])return{mode:'manage',eventId:p[1]};
+    if(p[0]==='admin'&&p[1])return{mode:'admin',eventId:p[1]};
+  }catch(e){}
+  return{mode:'admin'};
+}
+function fmtDate(d){if(!(d instanceof Date)||isNaN(d))return'';return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+function fmtISO(iso){if(!iso)return'';try{return fmtDate(new Date(iso));}catch(e){return'';}}
+function parseTimeToMs(t){try{if(!t||typeof t!=='string')return 0;var p=t.split(':');if(p.length<2)return 0;var ms=(+p[0]*60+ +p[1])*60000;return isNaN(ms)?0:ms;}catch(e){return 0;}}
+function diffMin(isoA,isoB){return Math.round((new Date(isoA)-new Date(isoB))/60000);}
+
+function csvParse(text){
+  var lines=text.trim().split('\n').filter(Boolean);
+  // 1行目はヘッダー行としてスキップ
+  return lines.slice(1).map(function(line){
+    var cols=line.split(',').map(function(s){return s.trim().replace(/^"|"$/g,'');});
+    // 列構成: 時刻, 対象, プログラム[, 注目イベントメモ]
+    // ※プログラム名自体にカンマが入る場合を考慮し、最後の列を注目メモとして扱う
+    var noteCol=cols.length>=4?cols[cols.length-1]:'';
+    var progCols=cols.length>=4?cols.slice(2,cols.length-1):cols.slice(2);
+    var prog=progCols.join(',').trim();
+    var isFeatured=!!noteCol;
+    return{
+      id:uid(),scheduledTime:cols[0]||'',target:cols[1]||'',program:prog,
+      status:'pending',startedAt:null,operatorName:null,
+      isFeatured:isFeatured,
+      featuredNote:isFeatured?noteCol:'',
+      featuredAt:isFeatured?new Date().toISOString():null
+    };
+  }).filter(function(p){return p.program||p.target;});
+}
+// 文字コード自動判定（UTF-8 → Shift-JIS フォールバック）
+function readCsvFile(file,callback){
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var buf=e.target.result;
+    var utf8=null;
+    try{utf8=new TextDecoder('utf-8',{fatal:true}).decode(buf);}catch(err){utf8=null;}
+    if(utf8){callback(utf8);return;}
+    // Shift-JIS にフォールバック
+    try{callback(new TextDecoder('shift-jis').decode(buf));}
+    catch(err2){callback(new TextDecoder('utf-8',{fatal:false}).decode(buf));}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// FirebaseはJS配列をオブジェクトで返す場合がある→Array化
+function toArray(val){
+  if(!val)return[];
+  if(Array.isArray(val))return val;
+  // objectのvaluesを返す（indexでソート）
+  return Object.keys(val).sort(function(a,b){return Number(a)-Number(b);}).map(function(k){return val[k];});
+}
+
+function estimateAll(programs){
+  var ps=toArray(programs).map(function(p,i){return Object.assign({},p,{_i:i});});
+  var done=ps.filter(function(p){return p.startedAt;}).sort(function(a,b){return a._i-b._i;});
+
+  // 開始済みなし → 予定時刻をそのまま表示
+  if(done.length===0){
+    return ps.map(function(p){return Object.assign({},p,{_est:p.scheduledTime||'--:--'});});
+  }
+
+  // 直前（最後）に開始されたプログラムのズレをそのまま全行に適用
+  var last=done[done.length-1];
+  var schedMs=parseTimeToMs(last.scheduledTime);
+  var actualMs=new Date(last.startedAt).getHours()*3600000+new Date(last.startedAt).getMinutes()*60000;
+  var offsetMs=schedMs?actualMs-schedMs:0;
+
+  return ps.map(function(p){
+    if(p.startedAt)return Object.assign({},p,{_est:fmtISO(p.startedAt)});
+    if(!p.scheduledTime)return Object.assign({},p,{_est:'--:--'});
+    var ms=parseTimeToMs(p.scheduledTime)+offsetMs;
+    return Object.assign({},p,{_est:fmtDate(new Date(new Date().setHours(0,0,0,0)+ms))});
   });
+}
 
-  const USAGE_KEY = 'ghUploaderUsageCounts';
+// ══ Firebase ══
+var _db=null,_listeners=[];
+function fbCfgKey(){return 'evtm_fb2_config';}
+function saveCfg(c){localStorage.setItem(fbCfgKey(),JSON.stringify(c));}
+function loadCfg(){try{return JSON.parse(localStorage.getItem(fbCfgKey())||'null');}catch(e){return null;}}
+function jsObjToJson(s){
+  return s.replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)(\s*:)/g,'$1"$2"$3').replace(/,(\s*})/g,'$1');
+}
+function initFb(cfg){
+  try{
+    if(firebase.apps.length===0){firebase.initializeApp(cfg);}
+    _db=firebase.database();
+    // 他端末がREST APIで取得できるようDBにも保存
 
-  function loadUsageCounts() {
-    try {
-      return JSON.parse(localStorage.getItem(USAGE_KEY)) || {};
-    } catch (e) {
-      return {};
-    }
-  }
-
-  function saveUsageCounts(counts) {
-    try {
-      localStorage.setItem(USAGE_KEY, JSON.stringify(counts));
-    } catch (e) {
-      // localStorage が使えない環境では並び順の記憶をあきらめる
-    }
-  }
-
-  function repoKey(r) {
-    return r.owner + '/' + r.repo;
-  }
-
-  const repoSelect = document.getElementById('repoSelect');
-  const appListEl = document.getElementById('appList');
-  const toggleManageBtn = document.getElementById('toggleManageBtn');
-  const managePanel = document.getElementById('managePanel');
-  const newAppNameInput = document.getElementById('newAppName');
-  const newAppRepoInput = document.getElementById('newAppRepo');
-  const addAppBtn = document.getElementById('addAppBtn');
-
-  function renderAll() {
-    const list = loadAppList();
-    const counts = loadUsageCounts();
-    const previouslySelected = repoSelect.value;
-
-    // --- プルダウン（利用回数順） ---
-    const sorted = list.slice().sort((a, b) => {
-      const diff = (counts[repoKey(b)] || 0) - (counts[repoKey(a)] || 0);
-      if (diff !== 0) return diff;
-      return list.indexOf(a) - list.indexOf(b); // 利用回数が同じ場合は登録順を維持
-    });
-
-    repoSelect.innerHTML = '';
-    sorted.forEach((r) => {
-      const opt = document.createElement('option');
-      opt.value = repoKey(r);
-      opt.textContent = r.label;
-      repoSelect.appendChild(opt);
-    });
-    if (previouslySelected) repoSelect.value = previouslySelected;
-
-    // --- 管理パネルの一覧（登録順） ---
-    appListEl.innerHTML = '';
-    if (!list.length) {
-      const empty = document.createElement('div');
-      empty.className = 'empty-list';
-      empty.textContent = '登録されているアプリがありません。';
-      appListEl.appendChild(empty);
-    } else {
-      list.forEach((r) => {
-        const row = document.createElement('div');
-        row.className = 'app-row';
-
-        const info = document.createElement('div');
-        info.className = 'app-info';
-        const name = document.createElement('div');
-        name.className = 'app-name';
-        name.textContent = r.label;
-        const repoLine = document.createElement('div');
-        repoLine.className = 'app-repo';
-        repoLine.textContent = repoKey(r);
-        info.appendChild(name);
-        info.appendChild(repoLine);
-
-        const delBtn = document.createElement('button');
-        delBtn.type = 'button';
-        delBtn.className = 'app-delete';
-        delBtn.textContent = '削除';
-        delBtn.addEventListener('click', () => removeApp(repoKey(r)));
-
-        row.appendChild(info);
-        row.appendChild(delBtn);
-        appListEl.appendChild(row);
-      });
-    }
-  }
-
-  function addApp(name, repoRaw) {
-    const parsed = parseRepoInput(repoRaw);
-    if (!parsed) {
-      showStatus('error', 'リポジトリは "owner/repo" またはGitHubのURL形式で入力してください。');
-      return false;
-    }
-    if (!name) {
-      showStatus('error', 'アプリ名を入力してください。');
-      return false;
-    }
-    const list = loadAppList();
-    const key = parsed.owner + '/' + parsed.repo;
-    if (list.some((r) => repoKey(r) === key)) {
-      showStatus('error', 'そのリポジトリは既に登録されています。');
-      return false;
-    }
-    list.push({ owner: parsed.owner, repo: parsed.repo, label: name });
-    saveAppList(list);
-    renderAll();
-    showStatus('success', '「' + name + '」を追加しました。');
     return true;
+  }catch(e){console.error('Firebase init:',e);return false;}
+}
+function dbRef(eid){return _db.ref('events/'+eid);}
+function dbSave(eid,state,cb){dbRef(eid).set(state,function(err){if(cb)cb(err);});}
+function dbLoad(eid,cb){dbRef(eid).once('value',function(s){cb(null,s.val());},function(e){cb(e,null);});}
+function dbListen(eid,cb){var ref=dbRef(eid);var h=ref.on('value',function(s){cb(s.val());},function(e){console.error(e);});_listeners.push({ref:ref,h:h});}
+function dbOff(){_listeners.forEach(function(l){try{l.ref.off('value',l.h);}catch(e){}});_listeners=[];}
+
+var _ck=null;
+function clearTimers(){dbOff();if(_ck)clearInterval(_ck);}
+
+// ══ 開始確認モーダル（時計ピッカー付き） ══
+function showStartConfirm(programName, scheduledTime, onConfirm){
+  var now=new Date();
+  var selH=now.getHours(), selM=now.getMinutes();
+  var isAM=selH<12;
+  var mode='hour';
+  var bg=el('div',{className:'modal-bg',style:{alignItems:'flex-end'}});
+  var modal=el('div',{className:'modal',style:{maxWidth:480,paddingBottom:28}});
+  modal.appendChild(el('div',{style:{marginBottom:4}},[
+    el('div',{style:{fontSize:11,color:'#94a3b8',fontWeight:'600',marginBottom:2}},'開始するプログラム'),
+    el('div',{style:{fontSize:16,fontWeight:'800',color:'#1a1a2e',marginBottom:2}},programName),
+    scheduledTime?el('div',{style:{fontSize:12,color:'#64748b'}},'予定時刻: '+scheduledTime):el('span',null,''),
+  ]));
+  modal.appendChild(el('div',{style:{borderTop:'1px solid #f0eef8',margin:'12px 0'}}));
+  modal.appendChild(el('div',{style:{fontSize:11,color:'#94a3b8',fontWeight:'600',marginBottom:8}},'開始時刻（必要なら修正してください）'));
+  var topRow=el('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:10,marginBottom:10}});
+  var digitWrap=el('div',{style:{display:'flex',alignItems:'center',gap:2}});
+  var hDisp=el('div',{style:{fontSize:38,fontWeight:900,fontFamily:'monospace',padding:'4px 8px',borderRadius:8,cursor:'pointer',minWidth:54,textAlign:'center'}});
+  var colonEl=el('div',{style:{fontSize:38,fontWeight:900,fontFamily:'monospace',color:'#1a1a2e'}},':');
+  var mDisp=el('div',{style:{fontSize:38,fontWeight:900,fontFamily:'monospace',padding:'4px 8px',borderRadius:8,cursor:'pointer',minWidth:54,textAlign:'center'}});
+  digitWrap.appendChild(hDisp);digitWrap.appendChild(colonEl);digitWrap.appendChild(mDisp);
+  var ampmWrap=el('div',{style:{display:'flex',flexDirection:'column',gap:4}});
+  var amBtn=el('button',{style:{border:'2px solid #5b4fcf',borderRadius:8,padding:'5px 10px',fontSize:13,fontWeight:'800',cursor:'pointer',width:50}},'AM');
+  var pmBtn=el('button',{style:{border:'2px solid #5b4fcf',borderRadius:8,padding:'5px 10px',fontSize:13,fontWeight:'800',cursor:'pointer',width:50}},'PM');
+  ampmWrap.appendChild(amBtn);ampmWrap.appendChild(pmBtn);
+  topRow.appendChild(digitWrap);topRow.appendChild(ampmWrap);
+  modal.appendChild(topRow);
+  function dispH12(){var h=selH%12;return h===0?12:h;}
+  function updateDisplay(){
+    hDisp.textContent=String(selH).padStart(2,'0');
+    mDisp.textContent=String(selM).padStart(2,'0');
+    hDisp.style.background=mode==='hour'?'#ede7ff':'transparent';
+    hDisp.style.color=mode==='hour'?'#5b4fcf':'#1a1a2e';
+    mDisp.style.background=mode==='minute'?'#ede7ff':'transparent';
+    mDisp.style.color=mode==='minute'?'#5b4fcf':'#94a3b8';
+    amBtn.style.background=isAM?'#5b4fcf':'white';amBtn.style.color=isAM?'white':'#5b4fcf';
+    pmBtn.style.background=!isAM?'#5b4fcf':'white';pmBtn.style.color=!isAM?'white':'#5b4fcf';
   }
-
-  function removeApp(key) {
-    const list = loadAppList();
-    const target = list.find((r) => repoKey(r) === key);
-    if (!target) return;
-    if (!confirm('「' + target.label + '」を一覧から削除しますか？（GitHub上のリポジトリ自体は削除されません）')) return;
-    const next = list.filter((r) => repoKey(r) !== key);
-    saveAppList(next);
-    renderAll();
-    showStatus('info', '「' + target.label + '」を削除しました。');
-  }
-
-  function recordUsage(repoValue) {
-    const counts = loadUsageCounts();
-    counts[repoValue] = (counts[repoValue] || 0) + 1;
-    saveUsageCounts(counts);
-    renderAll();
-  }
-
-  toggleManageBtn.addEventListener('click', () => {
-    const isHidden = managePanel.style.display === 'none';
-    managePanel.style.display = isHidden ? 'block' : 'none';
-    toggleManageBtn.textContent = isHidden ? '－ アプリの追加・削除を閉じる' : '＋ アプリの追加・削除';
-  });
-
-  addAppBtn.addEventListener('click', () => {
-    const ok = addApp(newAppNameInput.value.trim(), newAppRepoInput.value.trim());
-    if (ok) {
-      newAppNameInput.value = '';
-      newAppRepoInput.value = '';
-    }
-  });
-
-  renderAll();
-
-  const dropZone = document.getElementById('dropZone');
-  const fileInput = document.getElementById('fileInput');
-  const fileNameEl = document.getElementById('fileName');
-  const uploadBtn = document.getElementById('uploadBtn');
-  const statusEl = document.getElementById('status');
-
-  let pathTouchedByUser = false;
-  document.getElementById('path').addEventListener('input', () => { pathTouchedByUser = true; });
-
-  let selectedFiles = [];
-
-  dropZone.addEventListener('click', () => fileInput.click());
-  dropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropZone.classList.add('dragover');
-  });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-  dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('dragover');
-    if (e.dataTransfer.files.length) {
-      handleFiles(e.dataTransfer.files);
-    }
-  });
-  fileInput.addEventListener('change', () => {
-    if (fileInput.files.length) handleFiles(fileInput.files);
-  });
-
-  function handleFiles(fileList) {
-    selectedFiles = Array.from(fileList);
-    if (selectedFiles.length === 1) {
-      const f = selectedFiles[0];
-      fileNameEl.textContent = f.name + '（' + Math.round(f.size / 1024) + ' KB）';
-    } else {
-      const totalKb = Math.round(selectedFiles.reduce((sum, f) => sum + f.size, 0) / 1024);
-      const names = selectedFiles.map((f) => f.name).join(', ');
-      fileNameEl.textContent = selectedFiles.length + '個のファイルを選択（計 ' + totalKb + ' KB）：' + names;
-    }
-    updatePathUiForFileCount();
-    updateUploadState();
-  }
-
-  function updatePathUiForFileCount() {
-    const pathInputEl = document.getElementById('path');
-    const pathHint = document.getElementById('pathHint');
-    const pathLabel = document.getElementById('pathLabel');
-    if (selectedFiles.length > 1) {
-      pathLabel.textContent = 'リポジトリ内の配置先フォルダ（複数ファイル時）';
-      pathHint.textContent = '複数ファイルを選択中です。ここは配置先フォルダとして扱われ（空欄ならリポジトリ直下）、各ファイルは元のファイル名のまま配置されます。';
-      // ユーザーが自分で書き換えていない、初期値の "index.html"（ファイル名）が
-      // フォルダ名として誤用されるのを防ぐため、複数ファイル選択時は自動で空にする
-      if (!pathTouchedByUser && pathInputEl.value.trim() === 'index.html') {
-        pathInputEl.value = '';
+  amBtn.onclick=function(){if(!isAM){isAM=true;selH=selH>=12?selH-12:selH;}updateDisplay();};
+  pmBtn.onclick=function(){if(isAM){isAM=false;selH=selH<12?selH+12:selH;}updateDisplay();};
+  hDisp.onclick=function(){mode='hour';updateDisplay();drawClock();};
+  mDisp.onclick=function(){mode='minute';updateDisplay();drawClock();};
+  var SVG_SIZE=220,CX=110,CY=110,R=93;
+  var svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('width',SVG_SIZE);svg.setAttribute('height',SVG_SIZE);svg.setAttribute('viewBox','0 0 '+SVG_SIZE+' '+SVG_SIZE);
+  svg.style.display='block';svg.style.margin='0 auto';svg.style.touchAction='none';svg.style.cursor='pointer';
+  function drawClock(){
+    svg.innerHTML='';
+    var bgc=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    bgc.setAttribute('cx',CX);bgc.setAttribute('cy',CY);bgc.setAttribute('r',R);bgc.setAttribute('fill','#f1f5f9');svg.appendChild(bgc);
+    var nums=mode==='hour'?[12,1,2,3,4,5,6,7,8,9,10,11]:[0,5,10,15,20,25,30,35,40,45,50,55];
+    nums.forEach(function(n,i){
+      var a=(i/12)*2*Math.PI-Math.PI/2;
+      var nx=CX+Math.cos(a)*(R-22),ny=CY+Math.sin(a)*(R-22);
+      var isSel=mode==='hour'?dispH12()===n:(n===Math.round(selM/5)*5%60);
+      if(isSel){
+        var ln=document.createElementNS('http://www.w3.org/2000/svg','line');
+        ln.setAttribute('x1',CX);ln.setAttribute('y1',CY);ln.setAttribute('x2',nx);ln.setAttribute('y2',ny);
+        ln.setAttribute('stroke','#5b4fcf');ln.setAttribute('stroke-width','2');svg.appendChild(ln);
+        var cd=document.createElementNS('http://www.w3.org/2000/svg','circle');
+        cd.setAttribute('cx',CX);cd.setAttribute('cy',CY);cd.setAttribute('r',5);cd.setAttribute('fill','#5b4fcf');svg.appendChild(cd);
+        var sc=document.createElementNS('http://www.w3.org/2000/svg','circle');
+        sc.setAttribute('cx',nx);sc.setAttribute('cy',ny);sc.setAttribute('r',20);sc.setAttribute('fill','#5b4fcf');svg.appendChild(sc);
       }
-    } else {
-      pathLabel.textContent = 'リポジトリ内の配置パス';
-      pathHint.textContent = '1ファイルのみ選択時は、このパスがそのままファイル名として使われます。複数ファイル選択時は、ここは配置先フォルダ（空欄ならリポジトリ直下）として扱われ、各ファイルは元のファイル名のまま配置されます。';
-      if (!pathTouchedByUser && pathInputEl.value.trim() === '') {
-        pathInputEl.value = 'index.html';
+      var tx=document.createElementNS('http://www.w3.org/2000/svg','text');
+      tx.setAttribute('x',nx);tx.setAttribute('y',ny);tx.setAttribute('text-anchor','middle');tx.setAttribute('dominant-baseline','central');
+      tx.setAttribute('font-size','14');tx.setAttribute('font-weight','700');tx.setAttribute('fill',isSel?'white':'#1a1a2e');
+      tx.textContent=mode==='hour'?String(n):String(n).padStart(2,'0');svg.appendChild(tx);
+    });
+    updateDisplay();
+  }
+  drawClock();
+  function handleInput(cx,cy){
+    var rect=svg.getBoundingClientRect();
+    var x=cx-rect.left-CX,y=cy-rect.top-CY;
+    var angle=Math.atan2(y,x)+Math.PI/2;if(angle<0)angle+=2*Math.PI;
+    if(mode==='hour'){
+      var idx=Math.round(angle/(2*Math.PI)*12);if(idx===0||idx===12)idx=12;
+      selH=isAM?(idx===12?0:idx):(idx===12?12:idx+12);
+      drawClock();setTimeout(function(){mode='minute';drawClock();},220);
+    } else {var m=Math.round(angle/(2*Math.PI)*60);if(m===60)m=0;selM=m;drawClock();}
+  }
+  svg.addEventListener('click',function(ev){handleInput(ev.clientX,ev.clientY);});
+  svg.addEventListener('touchend',function(ev){ev.preventDefault();var t=ev.changedTouches[0];handleInput(t.clientX,t.clientY);});
+  modal.appendChild(svg);
+  var actions=el('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginTop:16}});
+  var cancelBtn=el('button',{className:'btn',style:{background:'#f0eef8',color:'#5b4fcf',padding:'13px'}},'キャンセル');
+  var okBtn=el('button',{className:'btn btn-primary',style:{padding:'13px'}},'この時刻で開始');
+  cancelBtn.onclick=function(){if(document.body.contains(bg))document.body.removeChild(bg);};
+  okBtn.onclick=function(){if(document.body.contains(bg))document.body.removeChild(bg);onConfirm(String(selH).padStart(2,'0')+':'+String(selM).padStart(2,'0'));};
+  actions.appendChild(cancelBtn);actions.appendChild(okBtn);modal.appendChild(actions);
+  bg.appendChild(modal);bg.onclick=function(e){if(e.target===bg&&document.body.contains(bg))document.body.removeChild(bg);};
+  document.body.appendChild(bg);
+}
+
+// ══ Clock Picker Modal ══
+function showClockPicker(initialTime, onOk, onCancel){
+  var parts=(initialTime||fmtDate(new Date())).split(':');
+  var selH=+parts[0]||0, selM=+parts[1]||0;
+  var isAM=selH<12;
+  var mode='hour';
+  var bg=el('div',{className:'modal-bg center'});
+  var modal=el('div',{className:'modal center-modal',style:{padding:'20px',background:'white',maxWidth:320}});
+  var topRow=el('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:10,marginBottom:12}});
+  var digitWrap=el('div',{style:{display:'flex',alignItems:'center',gap:2}});
+  var hDisp=el('div',{style:{fontSize:40,fontWeight:900,fontFamily:'monospace',padding:'4px 8px',borderRadius:8,cursor:'pointer',minWidth:58,textAlign:'center'}});
+  var colonEl=el('div',{style:{fontSize:40,fontWeight:900,fontFamily:'monospace',color:'#1a1a2e',lineHeight:'1'}},':');
+  var mDisp=el('div',{style:{fontSize:40,fontWeight:900,fontFamily:'monospace',padding:'4px 8px',borderRadius:8,cursor:'pointer',minWidth:58,textAlign:'center'}});
+  digitWrap.appendChild(hDisp);digitWrap.appendChild(colonEl);digitWrap.appendChild(mDisp);
+  var ampmWrap=el('div',{style:{display:'flex',flexDirection:'column',gap:4}});
+  var amBtn=el('button',{style:{border:'2px solid #5b4fcf',borderRadius:8,padding:'6px 10px',fontSize:13,fontWeight:'800',cursor:'pointer',width:52}},'AM');
+  var pmBtn=el('button',{style:{border:'2px solid #5b4fcf',borderRadius:8,padding:'6px 10px',fontSize:13,fontWeight:'800',cursor:'pointer',width:52}},'PM');
+  ampmWrap.appendChild(amBtn);ampmWrap.appendChild(pmBtn);
+  topRow.appendChild(digitWrap);topRow.appendChild(ampmWrap);
+  function dispH12(){var h=selH%12;return h===0?12:h;}
+  function updateDisplay(){
+    hDisp.textContent=String(selH).padStart(2,'0');
+    mDisp.textContent=String(selM).padStart(2,'0');
+    hDisp.style.background=mode==='hour'?'#ede7ff':'transparent';
+    hDisp.style.color=mode==='hour'?'#5b4fcf':'#1a1a2e';
+    mDisp.style.background=mode==='minute'?'#ede7ff':'transparent';
+    mDisp.style.color=mode==='minute'?'#5b4fcf':'#94a3b8';
+    amBtn.style.background=isAM?'#5b4fcf':'white';amBtn.style.color=isAM?'white':'#5b4fcf';
+    pmBtn.style.background=!isAM?'#5b4fcf':'white';pmBtn.style.color=!isAM?'white':'#5b4fcf';
+  }
+  amBtn.onclick=function(){if(!isAM){isAM=true;selH=selH>=12?selH-12:selH;}updateDisplay();};
+  pmBtn.onclick=function(){if(isAM){isAM=false;selH=selH<12?selH+12:selH;}updateDisplay();};
+  hDisp.onclick=function(){mode='hour';updateDisplay();drawClock();};
+  mDisp.onclick=function(){mode='minute';updateDisplay();drawClock();};
+  var SVG_SIZE=220,CX=110,CY=110,R=96;
+  var svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('width',SVG_SIZE);svg.setAttribute('height',SVG_SIZE);svg.setAttribute('viewBox','0 0 '+SVG_SIZE+' '+SVG_SIZE);
+  svg.style.touchAction='none';svg.style.cursor='pointer';svg.style.display='block';svg.style.margin='0 auto';
+  function drawClock(){
+    svg.innerHTML='';
+    var bgc=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    bgc.setAttribute('cx',CX);bgc.setAttribute('cy',CY);bgc.setAttribute('r',R);bgc.setAttribute('fill','#f1f5f9');svg.appendChild(bgc);
+    var nums=mode==='hour'?[12,1,2,3,4,5,6,7,8,9,10,11]:[0,5,10,15,20,25,30,35,40,45,50,55];
+    nums.forEach(function(n,i){
+      var a=(i/12)*2*Math.PI-Math.PI/2;
+      var nx=CX+Math.cos(a)*(R-22),ny=CY+Math.sin(a)*(R-22);
+      var isSel=mode==='hour'?dispH12()===n:(n===Math.round(selM/5)*5%60);
+      if(isSel){
+        var ln=document.createElementNS('http://www.w3.org/2000/svg','line');
+        ln.setAttribute('x1',CX);ln.setAttribute('y1',CY);ln.setAttribute('x2',nx);ln.setAttribute('y2',ny);
+        ln.setAttribute('stroke','#5b4fcf');ln.setAttribute('stroke-width','2');svg.appendChild(ln);
+        var cd=document.createElementNS('http://www.w3.org/2000/svg','circle');
+        cd.setAttribute('cx',CX);cd.setAttribute('cy',CY);cd.setAttribute('r',5);cd.setAttribute('fill','#5b4fcf');svg.appendChild(cd);
+        var sc=document.createElementNS('http://www.w3.org/2000/svg','circle');
+        sc.setAttribute('cx',nx);sc.setAttribute('cy',ny);sc.setAttribute('r',19);sc.setAttribute('fill','#5b4fcf');svg.appendChild(sc);
       }
+      var tx=document.createElementNS('http://www.w3.org/2000/svg','text');
+      tx.setAttribute('x',nx);tx.setAttribute('y',ny);tx.setAttribute('text-anchor','middle');tx.setAttribute('dominant-baseline','central');
+      tx.setAttribute('font-size','14');tx.setAttribute('font-weight','700');tx.setAttribute('fill',isSel?'white':'#1a1a2e');
+      tx.textContent=mode==='hour'?String(n):String(n).padStart(2,'0');svg.appendChild(tx);
+    });
+    updateDisplay();
+  }
+  drawClock();
+  function handleClockInput(clientX,clientY){
+    var rect=svg.getBoundingClientRect();
+    var x=clientX-rect.left-CX,y=clientY-rect.top-CY;
+    var angle=Math.atan2(y,x)+Math.PI/2;if(angle<0)angle+=2*Math.PI;
+    if(mode==='hour'){
+      var idx=Math.round(angle/(2*Math.PI)*12);if(idx===0||idx===12)idx=12;
+      selH=isAM?(idx===12?0:idx):(idx===12?12:idx+12);
+      drawClock();setTimeout(function(){mode='minute';drawClock();},220);
+    } else {var m=Math.round(angle/(2*Math.PI)*60);if(m===60)m=0;selM=m;drawClock();}
+  }
+  svg.addEventListener('click',function(ev){handleClockInput(ev.clientX,ev.clientY);});
+  svg.addEventListener('touchend',function(ev){ev.preventDefault();var t=ev.changedTouches[0];handleClockInput(t.clientX,t.clientY);});
+  var actions=el('div',{style:{display:'flex',gap:8,justifyContent:'flex-end',marginTop:14}});
+  var cancelBtn=el('button',{className:'modal-btn close'},'キャンセル');
+  var okBtn=el('button',{className:'modal-btn edit-time'},'OK');
+  cancelBtn.onclick=function(){document.body.removeChild(bg);if(onCancel)onCancel();};
+  okBtn.onclick=function(){document.body.removeChild(bg);onOk(String(selH).padStart(2,'0')+':'+String(selM).padStart(2,'0'));};
+  actions.appendChild(cancelBtn);actions.appendChild(okBtn);
+  modal.appendChild(topRow);modal.appendChild(svg);modal.appendChild(actions);
+  bg.appendChild(modal);document.body.appendChild(bg);
+}
+
+// ══ PWA対応カスタム確認ダイアログ（confirm()はAndroid PWAで無効） ══
+function showConfirm(msg, onOk, onCancel, opts){
+  // opts: { okLabel, subLabel, subAction } で3択対応
+  var bg=el('div',{className:'modal-bg center',style:{zIndex:200}});
+  var modal=el('div',{className:'modal center-modal',style:{padding:'24px',maxWidth:340}});
+  var msgEl=el('div',{style:{fontSize:16,color:'#1a1a2e',lineHeight:'1.7',marginBottom:20,whiteSpace:'pre-wrap'}},msg);
+  var col=el('div',{style:{display:'flex',flexDirection:'column',gap:8}});
+  var okBtn=el('button',{className:'btn btn-primary',style:{fontSize:15,padding:'12px',width:'100%'}},opts&&opts.okLabel?opts.okLabel:'OK');
+  okBtn.onclick=function(){document.body.removeChild(bg);onOk();};
+  col.appendChild(okBtn);
+  if(opts&&opts.subLabel&&opts.subAction){
+    var subBtn=el('button',{className:'btn btn-gray',style:{fontSize:14,padding:'11px',width:'100%'}},opts.subLabel);
+    subBtn.onclick=function(){document.body.removeChild(bg);opts.subAction();};
+    col.appendChild(subBtn);
+  }
+  var cancelBtn=el('button',{style:{background:'none',border:'none',color:'#94a3b8',fontSize:13,padding:'8px',cursor:'pointer',fontFamily:'inherit'}},'キャンセル（読み込まない）');
+  cancelBtn.onclick=function(){document.body.removeChild(bg);if(onCancel)onCancel();};
+  col.appendChild(cancelBtn);
+  modal.appendChild(msgEl);modal.appendChild(col);
+  bg.appendChild(modal);document.body.appendChild(bg);
+}
+function showClockPicker(initialTime, onOk, onCancel){
+  var parts=(initialTime||fmtDate(new Date())).split(':');
+  var selH=+parts[0]||0, selM=+parts[1]||0;
+  var isAM=selH<12;  // AM/PM フラグ
+  var mode='hour';   // 'hour' → タップ後自動で 'minute' へ
+  var bg=el('div',{className:'modal-bg center'});
+  var modal=el('div',{className:'modal center-modal',style:{padding:'20px',background:'white',maxWidth:320}});
+
+  // ── 上部：デジタル表示 ＋ AM/PM ──
+  var topRow=el('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:10,marginBottom:12}});
+
+  // デジタル時刻（12時間制）
+  var digitWrap=el('div',{style:{display:'flex',alignItems:'center',gap:2}});
+  var hDisp=el('div',{style:{fontSize:40,fontWeight:900,fontFamily:'monospace',padding:'4px 8px',borderRadius:8,cursor:'pointer',minWidth:58,textAlign:'center'}});
+  var colonEl=el('div',{style:{fontSize:40,fontWeight:900,fontFamily:'monospace',color:'#1a1a2e',lineHeight:'1'}},':');
+  var mDisp=el('div',{style:{fontSize:40,fontWeight:900,fontFamily:'monospace',padding:'4px 8px',borderRadius:8,cursor:'pointer',minWidth:58,textAlign:'center'}});
+  digitWrap.appendChild(hDisp);digitWrap.appendChild(colonEl);digitWrap.appendChild(mDisp);
+
+  // AM/PM ボタン（縦並び）
+  var ampmWrap=el('div',{style:{display:'flex',flexDirection:'column',gap:4}});
+  var amBtn=el('button',{style:{border:'2px solid #5b4fcf',borderRadius:8,padding:'6px 10px',fontSize:13,fontWeight:'800',cursor:'pointer',width:52}},'AM');
+  var pmBtn=el('button',{style:{border:'2px solid #5b4fcf',borderRadius:8,padding:'6px 10px',fontSize:13,fontWeight:'800',cursor:'pointer',width:52}},'PM');
+  ampmWrap.appendChild(amBtn);ampmWrap.appendChild(pmBtn);
+  topRow.appendChild(digitWrap);topRow.appendChild(ampmWrap);
+
+  // 12時間制の表示時（1-12）
+  function dispH12(){
+    var h=selH%12;return h===0?12:h;
+  }
+
+  function updateDisplay(){
+    hDisp.textContent=String(selH).padStart(2,'0'); // 24h表示
+    mDisp.textContent=String(selM).padStart(2,'0');
+    hDisp.style.background=mode==='hour'?'#ede7ff':'transparent';
+    hDisp.style.color=mode==='hour'?'#5b4fcf':'#1a1a2e';
+    mDisp.style.background=mode==='minute'?'#ede7ff':'transparent';
+    mDisp.style.color=mode==='minute'?'#5b4fcf':'#94a3b8';
+    // AM/PMボタンのスタイル
+    amBtn.style.background=isAM?'#5b4fcf':'white';
+    amBtn.style.color=isAM?'white':'#5b4fcf';
+    pmBtn.style.background=!isAM?'#5b4fcf':'white';
+    pmBtn.style.color=!isAM?'white':'#5b4fcf';
+  }
+
+  amBtn.onclick=function(){
+    if(!isAM){isAM=true;selH=selH-12<0?0:selH-12;}
+    updateDisplay();
+  };
+  pmBtn.onclick=function(){
+    if(isAM){isAM=false;selH=selH+12>23?23:selH+12;}
+    updateDisplay();
+  };
+  hDisp.onclick=function(){mode='hour';updateDisplay();drawClock();};
+  mDisp.onclick=function(){mode='minute';updateDisplay();drawClock();};
+
+  // ── 時計盤 ──
+  var SVG_SIZE=220,CX=110,CY=110,R=96;
+  var svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('width',SVG_SIZE);svg.setAttribute('height',SVG_SIZE);svg.setAttribute('viewBox','0 0 '+SVG_SIZE+' '+SVG_SIZE);
+  svg.style.touchAction='none';svg.style.cursor='pointer';svg.style.display='block';svg.style.margin='0 auto';
+
+  function drawClock(){
+    svg.innerHTML='';
+    var bg2=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    bg2.setAttribute('cx',CX);bg2.setAttribute('cy',CY);bg2.setAttribute('r',R);
+    bg2.setAttribute('fill','#f1f5f9');svg.appendChild(bg2);
+
+    var nums;
+    if(mode==='hour'){
+      // 12時間表示：12,1,2,...,11
+      nums=[12,1,2,3,4,5,6,7,8,9,10,11];
+    } else {
+      nums=[0,5,10,15,20,25,30,35,40,45,50,55];
+    }
+
+    nums.forEach(function(n,i){
+      var angle=(i/12)*2*Math.PI-Math.PI/2;
+      var nx=CX+Math.cos(angle)*(R-22);
+      var ny=CY+Math.sin(angle)*(R-22);
+      var isSel;
+      if(mode==='hour'){
+        isSel=(dispH12()===n);
+      } else {
+        isSel=(n===Math.round(selM/5)*5%60);
+      }
+      if(isSel){
+        // 針
+        var line=document.createElementNS('http://www.w3.org/2000/svg','line');
+        line.setAttribute('x1',CX);line.setAttribute('y1',CY);line.setAttribute('x2',nx);line.setAttribute('y2',ny);
+        line.setAttribute('stroke','#5b4fcf');line.setAttribute('stroke-width','2');svg.appendChild(line);
+        var cDot=document.createElementNS('http://www.w3.org/2000/svg','circle');
+        cDot.setAttribute('cx',CX);cDot.setAttribute('cy',CY);cDot.setAttribute('r',5);
+        cDot.setAttribute('fill','#5b4fcf');svg.appendChild(cDot);
+        var selCirc=document.createElementNS('http://www.w3.org/2000/svg','circle');
+        selCirc.setAttribute('cx',nx);selCirc.setAttribute('cy',ny);selCirc.setAttribute('r',19);
+        selCirc.setAttribute('fill','#5b4fcf');svg.appendChild(selCirc);
+      }
+      var txt=document.createElementNS('http://www.w3.org/2000/svg','text');
+      txt.setAttribute('x',nx);txt.setAttribute('y',ny);txt.setAttribute('text-anchor','middle');
+      txt.setAttribute('dominant-baseline','central');txt.setAttribute('font-size','14');txt.setAttribute('font-weight','700');
+      txt.setAttribute('fill',isSel?'white':'#1a1a2e');
+      txt.textContent=mode==='hour'?String(n):String(n).padStart(2,'0');
+      svg.appendChild(txt);
+    });
+    updateDisplay();
+  }
+  drawClock();
+
+  function handleClockInput(clientX,clientY){
+    var rect=svg.getBoundingClientRect();
+    var x=clientX-rect.left-CX;
+    var y=clientY-rect.top-CY;
+    var angle=Math.atan2(y,x)+Math.PI/2;
+    if(angle<0)angle+=2*Math.PI;
+    if(mode==='hour'){
+      var idx=Math.round(angle/(2*Math.PI)*12);if(idx===12||idx===0)idx=12;
+      // 1-12 → 実際のselH（AM/PMで変換）
+      if(isAM){selH=(idx===12)?0:idx;}
+      else{selH=(idx===12)?12:idx+12;}
+      drawClock();
+      setTimeout(function(){mode='minute';drawClock();},220);
+    } else {
+      var m=Math.round(angle/(2*Math.PI)*60);if(m===60)m=0;
+      selM=m;drawClock();
     }
   }
 
-  function updateUploadState() {
-    uploadBtn.disabled = selectedFiles.length === 0;
-  }
+  svg.addEventListener('click',function(ev){handleClockInput(ev.clientX,ev.clientY);});
+  svg.addEventListener('touchend',function(ev){ev.preventDefault();var t=ev.changedTouches[0];handleClockInput(t.clientX,t.clientY);});
 
-  function showStatus(type, msg) {
-    statusEl.className = 'status show ' + type;
-    statusEl.innerHTML = msg;
-  }
+  var actions=el('div',{style:{display:'flex',gap:8,justifyContent:'flex-end',marginTop:14}});
+  var cancelBtn=el('button',{className:'modal-btn close'},'キャンセル');
+  var okBtn=el('button',{className:'modal-btn edit-time'},'OK');
+  cancelBtn.onclick=function(){document.body.removeChild(bg);if(onCancel)onCancel();};
+  okBtn.onclick=function(){document.body.removeChild(bg);onOk(String(selH).padStart(2,'0')+':'+String(selM).padStart(2,'0'));};
+  actions.appendChild(cancelBtn);actions.appendChild(okBtn);
 
-  function arrayBufferToBase64(buffer) {
-    let binary = '';
-    const bytes = new Uint8Array(buffer);
-    const chunkSize = 0x8000;
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+  modal.appendChild(topRow);
+  modal.appendChild(svg);
+  modal.appendChild(actions);
+  bg.appendChild(modal);
+  document.body.appendChild(bg);
+}
+
+// ══ Edit Dialog ══
+function showEditDialog(p, canEdit, onCancelStart, onEditTime){
+  var started=fmtISO(p.startedAt);
+  var bg=el('div',{className:'modal-bg center'});
+  var modal=el('div',{className:'modal center-modal'});
+  modal.appendChild(el('div',{className:'modal-title'},'開始済の編集'));
+  modal.appendChild(el('div',{className:'modal-sub'},[
+    '現在の開始時刻：'+started,el('br'),
+    '開始者：'+(p.operatorName||'（不明）'),
+  ]));
+  var actions=el('div',{className:'modal-actions'});
+  var closeBtn=el('button',{className:'modal-btn close'},'閉じる');
+  closeBtn.onclick=function(){document.body.removeChild(bg);};
+  actions.appendChild(closeBtn);
+  if(canEdit){
+    var cancelBtn=el('button',{className:'modal-btn cancel-start'},'開始取消');
+    cancelBtn.onclick=function(){document.body.removeChild(bg);onCancelStart();};
+    var editBtn=el('button',{className:'modal-btn edit-time'},'時間修正');
+    editBtn.onclick=function(){document.body.removeChild(bg);showClockPicker(started,function(newTime){onEditTime(newTime);},null);};
+    actions.appendChild(cancelBtn);actions.appendChild(editBtn);
+  }
+  modal.appendChild(actions);
+  bg.appendChild(modal);
+  document.body.appendChild(bg);
+}
+
+// ══ Firebase設定完了 → 設定済みHTML生成画面 ══
+function mountFbDownload(cfg, onDone){
+  var dlBtn=el('button',{className:'btn btn-primary',style:{width:'100%',padding:'16px',fontSize:15,marginBottom:12}},'📥 設定済み index.html をダウンロード');
+  dlBtn.onclick=function(){
+    dlBtn.disabled=true;dlBtn.textContent='⏳ ダウンロード中…';
+    // 同一オリジンのHTMLを取得してConfig差し替え（Safari対応）
+    var pageUrl=location.href.split('#')[0].split('?')[0];
+    fetch(pageUrl,{cache:'no-store'})
+      .then(function(r){
+        if(!r.ok)throw new Error('HTTP '+r.status);
+        return r.text();
+      })
+      .then(function(src){
+        var ph='var __EMBEDDED_CFG__=null; // EVTM_EMBEDDED_CFG';
+        var cs='var __EMBEDDED_CFG__='+JSON.stringify(cfg)+'; // EVTM_EMBEDDED_CFG';
+        if(src.indexOf(ph)<0){
+          throw new Error('プレースホルダが見つかりません。先に最新版をtiinyにアップしてください');
+        }
+        var configured=src.split(ph).join(cs);
+        var blob=new Blob([configured],{type:'text/html;charset=utf-8'});
+        var a=document.createElement('a');
+        a.href=URL.createObjectURL(blob);
+        a.download='index.html';
+        document.body.appendChild(a);a.click();document.body.removeChild(a);
+        setTimeout(function(){try{URL.revokeObjectURL(a.href);}catch(e){}},3000);
+        dlBtn.textContent='✅ ダウンロード完了！tiinyに再アップしてください';
+        dlBtn.style.background='#2e7d32';dlBtn.disabled=false;
+      })
+      .catch(function(e){
+        dlBtn.textContent='❌ '+String(e.message||e);
+        dlBtn.style.background='#dc2626';dlBtn.disabled=false;
+      });
+  };
+
+  var nextBtn=el('button',{className:'btn',style:{width:'100%',padding:'14px',background:'#f0eef8',color:'#5b4fcf',fontSize:14,borderRadius:12,border:'none',cursor:'pointer',marginTop:10}},'→ このまま使い始める（この端末のみ設定済み）');
+  nextBtn.onclick=onDone;
+
+  render(el('div',{style:{minHeight:'100vh',background:'linear-gradient(135deg,#f0eef8,#f0fdf4)',display:'flex',flexDirection:'column'}},[
+    el('div',{className:'appbar',style:{background:'#2e7d32'}},'✅ Firebase 接続成功'),
+    el('div',{style:{maxWidth:480,margin:'0 auto',padding:'20px 16px',width:'100%'}},[
+      el('div',{className:'card',style:{borderColor:'#a7f3d0'}},[
+        el('div',{style:{fontSize:15,fontWeight:'800',color:'#1a1a2e',marginBottom:8}},'すべての端末でConfig不要にするには'),
+        el('div',{style:{fontSize:13,color:'#475569',lineHeight:'1.8',marginBottom:16}},[
+          '① 下のボタンで',el('b',null,'index.html'),'をダウンロード',el('br'),
+          '② tiiny.hostにこのファイルをドロップして再アップ',el('br'),
+          el('span',{style:{fontSize:11,color:'#94a3b8'}},'以降はiPad・Androidどの端末もConfig不要になります'),
+        ]),
+        dlBtn,
+        el('div',{style:{background:'#fffbeb',borderRadius:10,padding:'12px',fontSize:12,color:'#92400e',margin:'10px 0'}},[
+          '⚠️ tiiny.hostではZIP不要。ダウンロードした',el('b',null,'index.html'),'をそのままドロップでOK',
+        ]),
+        nextBtn,
+      ]),
+    ]),
+  ]));
+}
+
+// ══ ① Firebase設定画面 ══
+function mountFbSetup(onDone){
+  function step(n,title,body){return el('div',{className:'step-row'},[el('div',{className:'step-n'},String(n)),el('div',{className:'step-body'},[el('div',{className:'step-title'},title),body])]);}
+  var ta=el('textarea',{className:'field-inp',style:{height:'140px',resize:'vertical',fontFamily:'monospace',fontSize:11,borderRadius:8,borderBottom:'2px solid #e0ddf0'}});
+  ta.placeholder='{\n  "apiKey": "AIza...",\n  "authDomain": "xxx.firebaseapp.com",\n  "databaseURL": "https://xxx-default-rtdb.firebaseio.com",\n  "projectId": "xxx",\n  "storageBucket": "xxx.appspot.com",\n  "messagingSenderId": "...",\n  "appId": "..."\n}';
+  var errEl=el('div',{className:'err-msg',style:{display:'none'}});
+  var btn=el('button',{className:'btn btn-primary',style:{width:'100%',marginTop:14}},'接続して開始 →');
+  btn.onclick=function(){
+    var raw=ta.value.trim();if(!raw){errEl.textContent='設定を貼り付けてください';errEl.style.display='';return;}
+    var cfg=null;
+    try{cfg=JSON.parse(raw);}catch(e){
+      try{cfg=JSON.parse(jsObjToJson(raw));}catch(e2){errEl.textContent='形式エラー: '+e2.message;errEl.style.display='';return;}
     }
-    return btoa(binary);
-  }
+    if(!cfg.databaseURL){errEl.textContent='"databaseURL" がありません。Realtime Database を先に作成してください。';errEl.style.display='';return;}
+    if(!initFb(cfg)){errEl.textContent='Firebase初期化失敗。設定を確認してください。';errEl.style.display='';return;}
+    saveCfg(cfg);
+    mountFbDownload(cfg, onDone);
+  };
+  var resetLink=el('span',{style:{fontSize:11,color:'#94a3b8',cursor:'pointer',textDecoration:'underline'}},'設定をリセット');
+  resetLink.onclick=function(){showConfirm('Firebase設定を削除して再設定しますか？',function(){localStorage.removeItem(fbCfgKey());location.reload();});};
 
-  uploadBtn.addEventListener('click', async () => {
-    // ブラウザの自動入力で表示欄が上書きされることがあるため、
-    // 保存済みのトークンがあればそちらを優先して使う（表示欄はあくまで編集用）
-    let token = tokenInput.value.trim();
-    try {
-      const saved = localStorage.getItem(TOKEN_KEY);
-      if (saved) token = saved;
-    } catch (e) {
-      // localStorage が使えない場合は表示欄の値をそのまま使う
-    }
-    const repo = repoSelect.value;
-    const branch = document.getElementById('branch').value.trim() || 'main';
-    const pathInput = document.getElementById('path').value.trim().replace(/^\/+/, '').replace(/\/+$/, '');
-    let message = document.getElementById('message').value.trim();
+  render(el('div',{style:{minHeight:'100vh',background:'linear-gradient(135deg,#f0eef8,#fff7ed)'}},[
+    el('div',{className:'appbar'},'🔥 Firebase 初期設定'),
+    el('div',{className:'setup-wrap'},[
+      el('div',{className:'card'},[
+        el('div',{className:'section-title'},'手順'),
+        step(1,'Firebaseプロジェクトを作成',el('div',{className:'step-desc'},[el('a',{href:'https://console.firebase.google.com',target:'_blank',rel:'noopener',style:{color:'#5b4fcf',fontWeight:'700'}},'console.firebase.google.com'),' → 「プロジェクトを追加」'])),
+        step(2,'Realtime Databaseを有効化',el('div',{className:'step-desc'},'左メニュー「構築/ビルド」→「Realtime Database」→「データベースを作成」→「テストモード」')),
+        step(3,'設定をコピー',el('div',{className:'step-desc'},'プロジェクト設定（⚙️）→「マイアプリ」→「</> ウェブ」→「Config」→ { } をコピー')),
+      ]),
+      el('div',{className:'card'},[
+        el('div',{className:'section-title'},'firebaseConfig を貼り付け'),
+        el('div',{style:{fontSize:12,color:'#94a3b8',marginBottom:8}},'JSON形式・JS形式どちらも貼り付け可能'),
+        ta,errEl,btn,
+        el('div',{style:{textAlign:'right',marginTop:12}},resetLink),
+      ]),
+    ]),
+  ]));
+}
 
-    if (!token) { showStatus('error', 'Personal Access Token を入力してください。'); return; }
-    if (!repo || !repo.includes('/')) { showStatus('error', 'リポジトリは "owner/repo" の形式で入力してください。'); return; }
-    if (selectedFiles.length === 0) { showStatus('error', 'アップロードするファイルを選択してください。'); return; }
-    if (selectedFiles.length === 1 && !pathInput) { showStatus('error', '配置パスを入力してください。'); return; }
+// ══ ② メインアプリ ══
+function mountMain(initState, role, opKey, initialTab){
+  clearTimers();
+  var state=initState;
+  var canEdit=(role!=='viewer');
+  var activeTab=initialTab||(canEdit?'setup':'progress');
+  if(role==='operator'||role==='viewer')activeTab='progress';
+  var opName=role==='admin'?(initState.adminName||'運営管理者'):(initState.adminName||'運営管理者');
 
-    // 単一ファイル: パス欄をそのままファイルパスとして使う
-    // 複数ファイル: パス欄を配置先フォルダとして扱い、各ファイルは元のファイル名で配置する
-    const targets = selectedFiles.map((file) => {
-      const targetPath = selectedFiles.length === 1
-        ? pathInput
-        : (pathInput ? pathInput + '/' + file.name : file.name);
-      return { file, targetPath };
+  // root
+  var root=el('div',{style:{minHeight:'100vh',display:'flex',flexDirection:'column'}});
+
+  // appbar - 深津スタイル：イベント名 + 時刻
+  function tickClock(){if(clockEl)clockEl.textContent=fmtDate(new Date());}
+  // イベント切替パネル
+  function showEventSwitcher(){
+    var list=getEventsList();
+    var bg=el('div',{className:'modal-bg',style:{alignItems:'flex-end'}});
+    var modal=el('div',{className:'modal',style:{maxWidth:520,paddingBottom:24}});
+    modal.appendChild(el('div',{style:{fontSize:12,color:'var(--ink3)',letterSpacing:'.1em',marginBottom:14}},'イベントを切り替え'));
+
+    list.forEach(function(evt){
+      var isActive=evt.eventId===state.eventId;
+      var row=el('div',{style:{
+        display:'flex',alignItems:'center',gap:12,padding:'13px 0',
+        borderBottom:'1px solid var(--rule)',cursor:isActive?'default':'pointer',
+        opacity:isActive?1:.85
+      }});
+      var dot=el('div',{style:{width:8,height:8,borderRadius:'50%',flexShrink:0,
+        background:isActive?'var(--accent)':'var(--rule)'}});
+      var info=el('div',{style:{flex:1,minWidth:0}});
+      info.appendChild(el('div',{style:{fontSize:16,fontWeight:isActive?700:400,color:'var(--ink)',
+        overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},
+        evt.eventName||'（無題）'));
+      info.appendChild(el('div',{style:{fontSize:11,color:'var(--ink3)',marginTop:2,fontFamily:'var(--mono)'}},evt.eventId));
+      var badge=isActive?el('span',{style:{fontSize:11,color:'var(--accent)',fontWeight:700}},'表示中'):el('span');
+      row.appendChild(dot);row.appendChild(info);row.appendChild(badge);
+      if(!isActive){
+        row.onclick=function(){
+          document.body.removeChild(bg);
+          var spin=el('div',{style:{minHeight:'100vh',display:'flex',flexDirection:'column',
+            alignItems:'center',justifyContent:'center',gap:14,background:'var(--bg)'}});
+          spin.appendChild(el('div',{className:'spinner'}));
+          spin.appendChild(el('div',{style:{fontSize:14,fontWeight:700,color:'var(--ink2)'}},evt.eventName||'読み込み中…'));
+          render(spin);
+          localStorage.setItem(EVT_ACTIVE_KEY,evt.eventId);
+          dbLoad(evt.eventId,function(err,s){
+            if(!err&&s){clearTimers();mountMain(s,'admin',null,activeTab);}
+            else{showSnackbar('読み込み失敗: '+evt.eventName);mountMain(state,role,opKey,activeTab);}
+          });
+        };
+      }
+      modal.appendChild(row);
     });
 
-    const headers = {
-      'Authorization': 'Bearer ' + token,
-      'Accept': 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28'
+    var newBtn=el('button',{className:'btn btn-primary',style:{width:'100%',marginTop:16,padding:'12px',fontSize:14}},'＋ 新規イベントを作成');
+    newBtn.onclick=function(){document.body.removeChild(bg);clearTimers();showSetupForm(null);};
+    modal.appendChild(newBtn);
+    bg.appendChild(modal);
+    bg.onclick=function(e){if(e.target===bg&&document.body.contains(bg))document.body.removeChild(bg);};
+    document.body.appendChild(bg);
+  }
+
+  var appbar=el('div',{className:'appbar'},[
+    el('div',{style:{display:'flex',alignItems:'center',gap:5,cursor:'pointer',flex:1,minWidth:0},onclick:role==='admin'?showEventSwitcher:null},[
+      el('span',{className:'appbar-title',id:'appbar-title-el',style:{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},state.eventName||'イベントNow！'),
+      role==='admin'?el('span',{style:{fontSize:11,opacity:.5,flexShrink:0}},'▾'):el('span'),
+    ]),
+    el('span',{id:'hdr-clock',className:'appbar-right'},fmtDate(new Date())),
+  ]);
+  root.appendChild(appbar);
+
+  // tabs
+  var tabs=el('div',{className:'tabs'});
+  var tabSetup=el('div',{className:'tab'},[ svgIcon('setup'),' 準備']);
+  var tabProg=el('div',{className:'tab'},[ svgIcon('list'),' 進行']);
+  if(role==='admin'){tabs.appendChild(tabSetup);tabs.appendChild(tabProg);}
+  else{tabs.appendChild(tabProg);}
+  root.appendChild(tabs);
+
+  // status bar - ステータスドット＋テキストのみ
+  var statusBar=el('div',{className:'status-bar'});
+  var statusDot=el('span',{className:'status-dot waiting'});
+  var statusText=el('span',{});
+  var clockEl=document.getElementById('hdr-clock');
+  if(role==='viewer')statusBar.appendChild(el('span',{className:'viewer-chip'},'閲覧'));
+  statusBar.appendChild(statusDot);statusBar.appendChild(statusText);
+  root.appendChild(statusBar);
+
+  // emergency/pause overlay
+  var overlayEl=el('div',{style:{display:'none'}});
+  root.appendChild(overlayEl);
+
+  // content area
+  var content=el('div',{className:'content'});
+  root.appendChild(content);
+
+  // ── Setup Tab ──
+  var setupTabEl=null;
+
+  function buildSetupTab(){
+    var base=getBase();
+    var viewUrl=base+'#view:'+state.eventId;
+    var opUrl=base+'#op:'+state.eventId+':'+state.opKey;
+
+    // シェア画面モーダル
+    function showShareModal(title,url,desc){
+      var bg=el('div',{className:'modal-bg',style:{alignItems:'flex-end'}});
+      var modal=el('div',{className:'modal'});
+      var closeModal=function(){if(document.body.contains(bg))document.body.removeChild(bg);};
+      bg.onclick=function(e){if(e.target===bg)closeModal();};
+
+      var inpShare=el('input',{style:{width:'100%',fontSize:11,border:'1px solid #e0ddf0',borderRadius:8,padding:'8px 10px',background:'#f8f7ff',fontFamily:'monospace',marginBottom:12}});
+      inpShare.value=url;inpShare.readOnly=true;
+
+      var copyBtn=el('button',{className:'btn btn-primary',style:{width:'100%',marginBottom:10}},'📋 URLをコピー');
+      copyBtn.onclick=function(){
+        try{navigator.clipboard.writeText(url);}catch(e){var t=document.createElement('textarea');t.value=url;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);}
+        copyBtn.textContent='✓ コピーしました';
+        setTimeout(function(){copyBtn.textContent='📋 URLをコピー';},2000);
+      };
+
+      var nativeBtn=null;
+      if(navigator.share){
+        nativeBtn=el('button',{className:'btn btn-outline',style:{width:'100%',marginBottom:10}},'↗ 共有メニューを開く');
+        nativeBtn.onclick=function(){navigator.share({title:'イベントNow！ '+title,url:url}).catch(function(){});};
+      }
+
+      var qrDiv=el('div',{className:'qr-wrap',style:{marginBottom:12}},
+        el('img',{src:'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(url)+'&bgcolor=f8f7ff&color=1a1a2e&margin=8',alt:'QR',style:{maxWidth:200,borderRadius:10,border:'2px solid #e0ddf0'}})
+      );
+
+      var closeBtn=el('button',{className:'btn',style:{width:'100%',background:'#f0eef8',color:'#5b4fcf',padding:'12px',marginTop:4}},'閉じる');
+      closeBtn.onclick=closeModal;
+
+      modal.appendChild(el('div',{className:'modal-title'},title));
+      modal.appendChild(el('div',{className:'modal-sub'},desc));
+      modal.appendChild(inpShare);
+      modal.appendChild(copyBtn);
+      if(nativeBtn)modal.appendChild(nativeBtn);
+      modal.appendChild(qrDiv);
+      modal.appendChild(closeBtn);
+      bg.appendChild(modal);
+      document.body.appendChild(bg);
+    }
+
+    // CSV再読み込み（イベントIDは変えない・開始済みをマージ）
+    var csvReMsg=el('div',{style:{fontSize:13,color:'#2e7d32',fontWeight:'600',marginTop:8}},
+      state.programs&&state.programs.length?'現在 '+state.programs.length+'件':'');
+    var csvReFileInp=el('input',{type:'file',accept:'.csv,.txt',style:{display:'none'}});
+    var csvReBtn=el('button',{className:'btn btn-outline',style:{width:'100%',marginTop:8}},'📂 CSVを再読み込み');
+    csvReBtn.onclick=function(){csvReFileInp.click();};
+    csvReFileInp.onchange=function(){
+      var f=csvReFileInp.files[0];if(!f)return;
+      csvReFileInp.value=''; // 同じファイルを再選択できるようリセット
+      var baseName=f.name.replace(/\.[^.]+$/,'');
+      function doLoad(changeEventName){
+        readCsvFile(f,function(text){
+        var newProgs=csvParse(text);
+        if(!newProgs.length){csvReMsg.textContent='（0件）';csvReMsg.style.color='#d32f2f';return;}
+        // 開始済みマージ：プログラム名 AND 予定時刻が一致したものだけ引き継ぎ
+        var startedMap={};
+        toArray(state.programs).forEach(function(p){
+          if(p.startedAt){
+            var key=p.program+'|'+p.scheduledTime;
+            startedMap[key]={startedAt:p.startedAt,operatorName:p.operatorName||null};
+          }
+        });
+        var merged=0;
+        newProgs=newProgs.map(function(p){
+          var key=p.program+'|'+p.scheduledTime;
+          if(startedMap[key]){merged++;return Object.assign({},p,{startedAt:startedMap[key].startedAt,operatorName:startedMap[key].operatorName});}
+          return p;
+        });
+        // stateを更新してFirebaseに保存（1回のupdで）
+        var patch={programs:newProgs};
+        if(changeEventName&&baseName)patch.eventName=baseName;
+        upd(patch);
+        if(changeEventName&&baseName)applyEventName(baseName);
+        // 件数表示を更新
+        if(csvReFileInp._updateCount)csvReFileInp._updateCount(newProgs.length);
+        var msg='✓ '+newProgs.length+'件を読み込みました';
+        if(merged>0)msg+='（開始済 '+merged+'件を引き継ぎ）';
+        csvReMsg.textContent=msg;
+        csvReMsg.style.color='#2e7d32';
+        });
+        }
+        // イベント名が入力済みで異なる場合は3択で確認
+        if(baseName&&state.eventName&&state.eventName.trim()&&state.eventName!==baseName){
+          showConfirm(
+            'CSVを読み込みます。\nイベント名もファイル名に変更しますか？\n\n変更後: '+baseName,
+            function(){doLoad(true);},
+            null,
+            {okLabel:'イベント名も変更して読み込む',subLabel:'イベント名は変えず読み込む',subAction:function(){doLoad(false);}}
+          );
+        } else {doLoad(true);}
+      };
+
+    // イベントID更新ボタン
+    var newIdBtn2=el('button',{className:'btn btn-danger',style:{padding:'10px 16px',fontSize:14,borderRadius:10,flexShrink:0,width:'100%',marginTop:12}},'🆕 新規イベントを作成');
+    newIdBtn2.onclick=function(){
+      showConfirm('新規イベントを作成します。\n\n・イベント名・CSV・進行状況がすべてクリアされます\n・現在のFirebaseデータは削除されません',function(){
+        try{localStorage.removeItem('evtm_current_event');}catch(e){}
+        clearTimers();
+        mountEventList();
+      });
     };
 
-    uploadBtn.disabled = true;
-    const results = [];
+    // Recovery
+    var recInp=el('input',{className:'recovery-inp',placeholder:'Event ID を入力'});
+    var recBtn=el('button',{className:'btn btn-primary',style:{flexShrink:'0',padding:'9px 14px',fontSize:13}},'復帰');
+    recBtn.onclick=function(){
+      var id=recInp.value.trim();if(!id){alert('IDを入力してください');return;}
+      recBtn.disabled=true;recBtn.textContent='読込中…';
+      dbLoad(id,function(err,s){
+        recBtn.disabled=false;recBtn.textContent='復帰';
+        if(err||!s){alert('イベントが見つかりません: '+(err?err.message:id));return;}
+        clearTimers();mountMain(s,role,opKey);
+      });
+    };
 
-    for (let i = 0; i < targets.length; i++) {
-      const { file, targetPath } = targets[i];
-      const progressPrefix = targets.length > 1 ? '（' + (i + 1) + '/' + targets.length + '）' : '';
-      const fileMessage = message || ('Update ' + targetPath + ' via uploader tool');
+    // ── 実績エクスポート ──
+    var exportBtn=el('button',{className:'btn btn-primary',style:{width:'100%'}},'📊 実績データをCSVエクスポート');
+    exportBtn.onclick=function(){
+      var ps=toArray(state.programs);
+      var started=ps.filter(function(p){return p.startedAt;});
+      if(!started.length){showSnackbar('開始済みのプログラムがありません');return;}
 
-      try {
-        showStatus('info', progressPrefix + targetPath + ' を確認中…');
-        const apiBase = 'https://api.github.com/repos/' + repo + '/contents/' + targetPath.split('/').map(encodeURIComponent).join('/');
+      function parseMs(timeStr){
+        if(!timeStr)return null;
+        var p=timeStr.split(':');
+        return (+p[0])*3600000+(+p[1])*60000;
+      }
 
-        let sha = undefined;
-        const getRes = await fetch(apiBase + '?ref=' + encodeURIComponent(branch), { headers });
-        if (getRes.status === 200) {
-          const getData = await getRes.json();
-          sha = getData.sha;
-        } else if (getRes.status !== 404) {
-          const errData = await getRes.json().catch(() => ({}));
-          throw new Error('既存ファイルの確認に失敗しました（' + getRes.status + '）: ' + (errData.message || ''));
+      // BOM付きUTF-8 CSV
+      var lines=['\uFEFF'+'プログラム,対象,予定時刻,実績開始時刻,差分(分),担当者,登録種別'];
+      ps.forEach(function(p){
+        var actual=p.startedAt?fmtISO(p.startedAt):'';
+        var diff='';
+        if(p.startedAt&&p.scheduledTime){
+          var dMs=parseMs(fmtISO(p.startedAt))-parseMs(p.scheduledTime);
+          if(!isNaN(dMs))diff=Math.round(dMs/60000);
         }
+        var kind=!p.startedAt?'未登録':p.isEstimated?'予測':'実績';
+        lines.push([
+          p.program||'',
+          p.target||'',
+          p.scheduledTime||'',
+          actual,
+          diff,
+          p.isEstimated?'（予測登録）':(p.operatorName||''),
+          kind,
+          p.isFeatured?(p.featuredNote||'★'):''
+        ].join(','));
+      });
 
-        showStatus('info', progressPrefix + targetPath + (sha ? ' を更新中…' : ' を新規作成中…'));
+      var blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8'});
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download=(state.eventName||'event')+'_実績.csv';
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      setTimeout(function(){URL.revokeObjectURL(a.href);},3000);
+      showSnackbar('エクスポート完了（'+started.length+'件の実績）');
+    };
 
-        const arrayBuffer = await file.arrayBuffer();
-        const base64Content = arrayBufferToBase64(arrayBuffer);
+    setupTabEl=el('div',null,[
+      el('div',{className:'card'},[
+        el('div',{className:'section-title'},'イベント設定'),
+        el('div',{style:{marginBottom:12}},[el('div',{className:'field-label'},'イベント名（必須）'),
+          el('input',{className:'field-inp',id:'setup-eventname-inp',type:'text',value:state.eventName,readOnly:true,style:{background:'#f8f7ff',borderRadius:'8px 8px 0 0'}}),
+        ]),
+        el('div',null,[el('div',{className:'field-label'},'あなたの名前'),
+          el('input',{className:'field-inp',type:'text',value:state.adminName||'',readOnly:true,style:{background:'#f8f7ff',borderRadius:'8px 8px 0 0'}}),
+        ]),
+        el('div',{style:{marginTop:12}},[
+          (function(){
+            var progCountEl=el('div',{style:{fontSize:13,color:state.programs&&state.programs.length?'#2e7d32':'#94a3b8',fontWeight:'600',marginBottom:8}},(state.programs&&state.programs.length)?'✓ プログラム '+state.programs.length+'件':'（プログラム未設定）');
+            // csvReFileInpのonchangeでこの要素を更新できるよう外部に公開
+            csvReFileInp._updateCount=function(n){
+              progCountEl.textContent='✓ プログラム '+n+'件';
+              progCountEl.style.color='#2e7d32';
+            };
+            return progCountEl;
+          })(),
+          csvReBtn,csvReFileInp,csvReMsg,
+        ]),
+        el('div',{style:{marginTop:14}},[
+          el('div',{className:'field-label'},'イベントID'),
+          el('div',{style:{fontFamily:'monospace',fontSize:14,color:'#5b4fcf',background:'#f0eef8',borderRadius:8,padding:'8px 12px',marginTop:4,letterSpacing:'1px',wordBreak:'break-all'}},state.eventId),
+        ]),
+        newIdBtn2,
+      ]),
+      el('div',{className:'card'},[
+        el('div',{className:'section-title'},'共有'),
+        el('div',{className:'btn-grid'},[
+          el('button',{className:'btn btn-primary',onclick:function(){showShareModal('閲覧用URL',viewUrl,'閲覧のみ可（開始・編集不可）');}},'👁 閲覧URL共有'),
+          el('button',{className:'btn btn-primary',onclick:function(){showShareModal('オペレータ用URL',opUrl,'開始・時間修正ができます（管理画面は閲覧不可）');}},'⚙️ オペレータURL共有'),
+        ]),
+        el('div',{className:'btn-grid',style:{marginTop:8}},[
+          el('button',{className:'btn btn-outline',onclick:function(){
+            var manageUrl=getBase()+'#manage:'+state.eventId;
+            showShareModal('管理者リンク',manageUrl,'このリンクを開くと管理者画面（準備・進行両方）に入れます');
+          }},'👑 管理者リンク共有'),
+          el('button',{className:'btn btn-outline',onclick:function(){
+            showShareModal('イベントID',state.eventId,'スキャン後「イベント復帰」欄に入力して参加できます');
+          }},'🔑 イベントID共有'),
+        ]),
+      ]),
+      el('div',{className:'card'},[
+        el('div',{className:'section-title'},'実績エクスポート・履歴保存'),
+        el('div',{style:{fontSize:12,color:'var(--ink3)',marginBottom:12,lineHeight:'1.7'}},[
+          '予定時刻・実績開始時刻・差分をCSVで書き出します。',el('br'),
+          '次回のプログラム編成にお役立てください。',
+        ]),
+        exportBtn,
+        (function(){
+          var hSaveBtn=el('button',{className:'btn btn-outline',style:{width:'100%',marginTop:8}},'📋 この内容を履歴として保存');
+          hSaveBtn.onclick=function(){
+            showConfirm('現在の進行状況を履歴として保存しますか？',function(){
+              hSaveBtn.disabled=true;hSaveBtn.textContent='保存中…';
+              saveHistory(state,function(){
+                hSaveBtn.disabled=false;hSaveBtn.textContent='📋 この内容を履歴として保存';
+                showSnackbar('✓ 履歴に保存しました');
+              });
+            });
+          };
+          return hSaveBtn;
+        })(),
+      ]),
+      el('div',{className:'card'},[
+        el('div',{className:'csv-info'},[
+          el('b',null,'CSVの形式'),el('br'),
+          '1行目：ヘッダー行（自動スキップ）',el('br'),
+          '2行目以降：時刻,対象,プログラム名[,注目メモ]（例）',el('br'),
+          '08:20,全校,開会式',el('br'),'08:30,全校,準備運動',el('br'),
+          '08:40,全校,応援合戦',el('br'),'08:50,中学年,団体競技',
+          el('br'),el('span',{style:{color:'#2e7d32',fontSize:11}},'※ UTF-8 / Shift-JIS 両対応'),
+        ]),
+      ]),
+      el('div',{className:'card'},[
+        el('div',{className:'section-title'},'イベント復帰（ID入力）'),
+        el('div',{className:'recovery-row'},[recInp,recBtn]),
+        el('div',{style:{fontSize:10,color:'#94a3b8',marginTop:6}},'Event ID: '+state.eventId),
+      ]),
+    ]);
+    return setupTabEl;
+  }
 
-        const putBody = { message: fileMessage, content: base64Content, branch: branch };
-        if (sha) putBody.sha = sha;
+  // スナックバー
+  function showSnackbar(msg){
+    var sb=el('div',{style:{position:'fixed',bottom:24,left:'50%',transform:'translateX(-50%)',background:'#323232',color:'white',padding:'12px 20px',borderRadius:8,fontSize:13,fontWeight:'600',zIndex:200,whiteSpace:'nowrap',boxShadow:'0 4px 12px rgba(0,0,0,.3)'}},msg);
+    document.body.appendChild(sb);
+    setTimeout(function(){if(document.body.contains(sb))document.body.removeChild(sb);},3000);
+  }
 
-        const putRes = await fetch(apiBase, {
-          method: 'PUT',
-          headers: { ...headers, 'Content-Type': 'application/json' },
-          body: JSON.stringify(putBody)
+  // ── Progress Tab ──
+  var progTabEl=null;
+  var progList=null;
+  var pauseBtn=null,emergBtn=null,resetBtn=null,emergBanner=null,clearBtn=null;
+  var filterFeatured=false; // 注目イベントフィルタ
+
+  function buildProgressTab(){
+    var ctrl=canEdit?el('div',{className:'ctrl-row'},[]):null;
+    if(canEdit){
+      pauseBtn=el('button',{className:'btn btn-amber',style:{display:'inline-flex',alignItems:'center',gap:6,padding:'13px 20px',fontSize:'16px'}},'一時停止');
+      emergBtn=el('button',{className:'btn btn-danger',style:{padding:'13px 20px',fontSize:'16px'}},'緊急停止');
+      resetBtn=el('button',{className:'btn btn-green',style:{display:'none'}},'復旧完了');
+      clearBtn=el('button',{className:'btn btn-gray',style:{padding:'13px 16px',fontSize:'15px',color:'#475569',background:'#e2e8f0'}},'クリア');
+      pauseBtn.onclick=function(){upd({isPaused:!state.isPaused});};
+      emergBtn.onclick=function(){
+        showConfirm('緊急停止しますか？\n閲覧者に緊急停止を配信します。',function(){
+          upd({isEmergency:true,isPaused:false});
+          showSnackbar('緊急停止を配信しました');
         });
-        const putData = await putRes.json();
+      };
+      resetBtn.onclick=function(){
+        upd({isEmergency:false});
+        showSnackbar('運営を再開しました');
+      };
+      clearBtn.onclick=function(){
+        var ps=toArray(state.programs);
+        var startedCount=ps.filter(function(p){return p.startedAt;}).length;
+        if(!startedCount){showSnackbar('開始済みのプログラムがありません');return;}
+        showConfirm('開始済み '+startedCount+'件をすべてクリアします。',function(){
+          clearBtn.disabled=true;clearBtn.textContent='⏳ クリア中…';
 
-        if (putRes.status === 200 || putRes.status === 201) {
-          const commitUrl = putData.commit && putData.commit.html_url;
-          results.push({ path: targetPath, ok: true, commitUrl });
+          // ── 1) Firebaseのstartedが入っているパスを直接nullセット（フィールド削除）──
+          var pathUpdates={};
+          ps.forEach(function(p,i){
+            pathUpdates['events/'+state.eventId+'/programs/'+i+'/startedAt']=null;
+            pathUpdates['events/'+state.eventId+'/programs/'+i+'/operatorName']=null;
+          });
+          _db.ref().update(pathUpdates);
+
+          // ── 2) 完全にクリーンな配列を作ってローカルstateを直接書き換え ──
+          var cleared=ps.map(function(p){
+            return {id:p.id||uid(),scheduledTime:p.scheduledTime||'',
+              target:p.target||'',program:p.program||'',
+              // 注目メモは進行クリアでも保持する
+              isFeatured:p.isFeatured||false,
+              featuredNote:p.featuredNote||'',
+              featuredAt:p.featuredAt||null};
+          });
+          state=Object.assign({},state,{programs:cleared,isPaused:false,isEmergency:false,_t:Date.now()});
+
+          // ── 3) 即座に再描画 ──
+          try{renderPrograms();}catch(e){console.error(e);}
+          try{refreshStatusBar();}catch(e){}
+
+          // ── 4) Firebaseに完全な新stateを保存 ──
+          dbSave(state.eventId,state,function(err){
+            clearBtn.disabled=false;clearBtn.textContent='クリア';
+            if(err){showSnackbar('保存エラー: '+err.message);}
+            else{showSnackbar('✓ 進行クリア完了（'+startedCount+'件）');}
+          });
+        });
+      };
+      // 注目フィルタボタン
+      var filterBtn=el('button',{className:'btn btn-gray',style:{marginLeft:'auto',fontSize:13,padding:'8px 14px'}},
+        '☆ 注目のみ表示');
+      filterBtn.onclick=function(){
+        filterFeatured=!filterFeatured;
+        filterBtn.textContent=filterFeatured?'★ 全て表示':'☆ 注目のみ表示';
+        filterBtn.style.background=filterFeatured?'#fef3c7':'';
+        filterBtn.style.color=filterFeatured?'#92400e':'';
+        filterBtn.style.borderColor=filterFeatured?'#f59e0b':'';
+        renderPrograms();
+      };
+      ctrl.appendChild(pauseBtn);ctrl.appendChild(emergBtn);ctrl.appendChild(resetBtn);ctrl.appendChild(clearBtn);
+      ctrl.appendChild(filterBtn);
+    }
+
+    // 緊急停止バナー（進行エリア内）
+    var emergMsg=canEdit
+      ? '緊急停止中：配信を一時停止しています（復旧完了で解除）。'
+      : '緊急停止中：復旧が完了次第再開されます。';
+    emergBanner=el('div',{style:{display:'none',background:'#c62828',color:'white',borderRadius:10,padding:'12px 16px',marginBottom:14,fontWeight:'700',fontSize:14,lineHeight:'1.6'}},
+      emergMsg
+    );
+
+    progList=el('div',null,'');
+
+    var opNameRow=canEdit?el('div',{style:{marginBottom:10}},[
+      el('div',{className:'field-label',style:{fontSize:14}},'担当者名'),
+      (function(){var i=el('input',{className:'field-inp',type:'text',placeholder:'運営管理者',style:{background:'#f8f7ff',borderRadius:'8px 8px 0 0'}});i.value=opName||'運営管理者';i.oninput=function(){opName=i.value;};return i;})(),
+    ]):null;
+
+    progTabEl=el('div',null,[
+      el('div',{className:'prog-header'},[
+        el('div',{className:'prog-title',id:'prog-title-el'},'進行（'+state.eventName+'）'),
+        ctrl||'',
+      ]),
+      opNameRow||'',
+      emergBanner,
+      progList,
+    ]);
+    return progTabEl;
+  }
+
+  // ── 注目イベントの登録・更新 ──
+  function doFeatured(pid, note){
+    upd({programs:toArray(state.programs).map(function(p){
+      if(p.id!==pid)return p;
+      var nowFeatured=!p.isFeatured;
+      return Object.assign({},p,{isFeatured:nowFeatured,featuredNote:nowFeatured?(note||''):'',featuredAt:nowFeatured?new Date().toISOString():null});
+    })});
+  }
+
+  // ── 注目イベント登録モーダル ──
+  function showFeaturedRegister(p){
+    var bg=el('div',{className:'modal-bg center',style:{zIndex:200}});
+    var modal=el('div',{className:'modal center-modal',style:{padding:'24px',maxWidth:360}});
+    modal.appendChild(el('div',{style:{fontSize:18,fontWeight:700,color:'var(--ink)',marginBottom:4}},'★ 注目イベントに登録'));
+    modal.appendChild(el('div',{style:{fontSize:14,color:'var(--accent)',marginBottom:12}},p.program));
+    modal.appendChild(el('div',{style:{fontSize:12,color:'var(--ink3)',marginBottom:6}},'メモ（任意）'));
+    var noteInp=el('textarea',{style:{width:'100%',border:'1px solid var(--rule)',borderRadius:8,padding:'10px',fontSize:14,fontFamily:'var(--sans)',resize:'none',boxSizing:'border-box',minHeight:'72px'},placeholder:'観客への案内文やアナウンス内容など'});
+    noteInp.value=p.featuredNote||'';
+    modal.appendChild(noteInp);
+    var row=el('div',{style:{display:'flex',gap:8,marginTop:16}});
+    var cancelBtn=el('button',{className:'btn btn-gray',style:{flex:1}},p.isFeatured?'解除する':'キャンセル');
+    var okBtn=el('button',{className:'btn btn-primary',style:{flex:1}},'登録する');
+    cancelBtn.onclick=function(){
+      document.body.removeChild(bg);
+      if(p.isFeatured)doFeatured(p.id,'');
+    };
+    okBtn.onclick=function(){document.body.removeChild(bg);doFeatured(p.id,noteInp.value.trim());};
+    row.appendChild(cancelBtn);row.appendChild(okBtn);
+    modal.appendChild(row);
+    bg.appendChild(modal);document.body.appendChild(bg);
+  }
+
+  // ── 注目イベント詳細モーダル ──
+  function showFeaturedDetail(p){
+    var bg=el('div',{className:'modal-bg center',style:{zIndex:200}});
+    var modal=el('div',{className:'modal center-modal',style:{padding:'24px',maxWidth:360}});
+    // ヘッダー
+    var hdr=el('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:12}});
+    hdr.appendChild(el('span',{style:{fontSize:22,color:'#f59e0b'}},'★'));
+    hdr.appendChild(el('span',{style:{fontSize:18,fontWeight:800,color:'#92400e'}},p.program));
+    modal.appendChild(hdr);
+    // 詳細情報
+    var info=el('div',{style:{background:'#fffbeb',borderRadius:10,padding:'12px',marginBottom:12}});
+    info.appendChild(el('div',{style:{fontSize:12,color:'var(--ink3)',marginBottom:4}},'対象'));
+    info.appendChild(el('div',{style:{fontSize:15,fontWeight:600,color:'var(--ink)',marginBottom:10}},p.target||'—'));
+    info.appendChild(el('div',{style:{fontSize:12,color:'var(--ink3)',marginBottom:4}},'予定時刻'));
+    info.appendChild(el('div',{style:{fontFamily:'var(--mono)',fontSize:20,fontWeight:700,color:'var(--ink)',marginBottom:10}},p.scheduledTime||'—'));
+    if(p.startedAt){
+      info.appendChild(el('div',{style:{fontSize:12,color:'var(--ink3)',marginBottom:4}},'開始時刻（実績）'));
+      info.appendChild(el('div',{style:{fontFamily:'var(--mono)',fontSize:20,fontWeight:700,color:'#2e7d32',marginBottom:4}},fmtISO(p.startedAt)));
+    }
+    modal.appendChild(info);
+    // メモ
+    if(p.featuredNote){
+      modal.appendChild(el('div',{style:{fontSize:12,color:'var(--ink3)',marginBottom:4}},'メモ'));
+      modal.appendChild(el('div',{style:{fontSize:14,color:'var(--ink)',lineHeight:'1.7',background:'white',border:'1px solid var(--rule)',borderRadius:8,padding:'10px',whiteSpace:'pre-wrap',marginBottom:12}},p.featuredNote));
+    }
+    // アクション
+    var row=el('div',{style:{display:'flex',gap:8}});
+    var closeBtn=el('button',{className:'btn btn-gray',style:{flex:1}},'閉じる');
+    closeBtn.onclick=function(){document.body.removeChild(bg);};
+    row.appendChild(closeBtn);
+    if(canEdit){
+      var editBtn=el('button',{className:'btn btn-outline',style:{flex:1}},'編集');
+      editBtn.onclick=function(){document.body.removeChild(bg);showFeaturedRegister(p);};
+      var unregBtn=el('button',{style:{flex:1,background:'none',border:'1px solid var(--rule)',borderRadius:4,color:'var(--ink3)',cursor:'pointer',padding:'12px 8px',fontSize:13}},'★解除');
+      unregBtn.onclick=function(){document.body.removeChild(bg);doFeatured(p.id,'');};
+      row.appendChild(editBtn);row.appendChild(unregBtn);
+    }
+    modal.appendChild(row);
+    bg.onclick=function(e){if(e.target===bg&&document.body.contains(bg))document.body.removeChild(bg);};
+    bg.appendChild(modal);document.body.appendChild(bg);
+  }
+
+  function renderPrograms(){
+    if(!progList)return;
+    progList.innerHTML='';
+    var progs=estimateAll(state.programs||[]);
+
+    // 注目フィルタが有効な場合は注目イベントのみ表示
+    if(filterFeatured){
+      var featuredProgs=progs.filter(function(p){return p.isFeatured;});
+      if(featuredProgs.length===0){
+        progList.appendChild(el('div',{style:{padding:'32px 18px',color:'var(--ink3)',fontSize:14,textAlign:'center'}},'注目イベントはありません'));
+        return;
+      }
+      // 注目イベントのみをフラットに表示（セクション区切りなし）
+      progList.appendChild(el('div',{className:'section-label'},'★ 注目イベント（'+featuredProgs.length+'件）'));
+      featuredProgs.forEach(function(p){
+        var isDone=p.status==='started';
+        var rowCls='prog-row featured-row';
+        var row=el('div',{className:rowCls,style:{cursor:'pointer'}});
+        row.onclick=function(e){
+          if(e.target.classList&&e.target.classList.contains('featured-star'))return;
+          showFeaturedDetail(p);
+        };
+        var dot=el('div',{className:'prog-btn-col'});
+        dot.appendChild(el('span',{style:{fontSize:22,color:'#f59e0b',lineHeight:'1'}},'★'));
+        var info=el('div',{className:'prog-info'});
+        info.appendChild(el('div',{className:'prog-sched'},p.scheduledTime||'--:--'));
+        info.appendChild(el('div',{className:'prog-name',style:{color:'#92400e'}},p.program));
+        if(p.target)info.appendChild(el('div',{className:'prog-target'},p.target));
+        if(p.featuredNote)info.appendChild(el('div',{style:{fontSize:12,color:'#92400e',marginTop:3}},p.featuredNote));
+        var right=el('div',{className:'time-right'});
+        right.appendChild(el('span',{className:'time-label'},isDone?'開始':'予測'));
+        right.appendChild(el('div',{className:'time-val',style:{color:isDone?'#2e7d32':'var(--ink)'}},isDone?fmtISO(p.startedAt):(p._est||'--:--')));
+        var starBtn=el('button',{className:'featured-star on'});
+        starBtn.textContent='★';
+        if(canEdit)(function(prog){starBtn.onclick=function(e){e.stopPropagation();showFeaturedRegister(prog);};})(p);
+        row.appendChild(dot);row.appendChild(info);row.appendChild(right);row.appendChild(starBtn);
+        progList.appendChild(row);
+      });
+      return; // フィルタ中は以降の通常描画をスキップ
+    }
+    var progs=estimateAll(state.programs||[]);
+
+    // 最後の開始済みインデックスを特定
+    var lastDoneIdx=progs.reduce(function(a,p,i){return p.status==='started'?i:a;},-1);
+    // 最初の未開始インデックス
+    var firstNextIdx=-1;
+    progs.forEach(function(p,i){if(p.status!=='started'&&firstNextIdx<0)firstNextIdx=i;});
+
+    var doneSectionAdded=false,nextSectionAdded=false,upcomingSectionAdded=false;
+
+    progs.forEach(function(p,i){
+      var isDone=p.status==='started';
+      var isNext=!isDone&&i===firstNextIdx;
+      var isUpcoming=!isDone&&!isNext;
+
+      // セクションラベル
+      if(isDone&&!doneSectionAdded){
+        progList.appendChild(el('div',{className:'section-label'},'開始済み'));
+        doneSectionAdded=true;
+      }
+      if(isNext&&!nextSectionAdded){
+        progList.appendChild(el('div',{className:'section-label'},'次の試合'));
+        nextSectionAdded=true;
+      }
+      if(isUpcoming&&!upcomingSectionAdded){
+        progList.appendChild(el('div',{className:'section-label'},'以降'));
+        upcomingSectionAdded=true;
+      }
+
+      var rowCls='prog-row '+(isDone?(p.isEstimated?'done-row estimated-row':'done-row'):isNext?'next-row':'');
+      if(p.isFeatured)rowCls+=' featured-row';
+      var row=el('div',{className:rowCls.trim(),style:{cursor:p.isFeatured?'pointer':''}});
+      // 注目イベントはタップで詳細モーダルを表示
+      if(p.isFeatured){
+        row.onclick=function(e){
+          if(e.target.classList&&e.target.classList.contains('featured-star'))return;
+          showFeaturedDetail(p);
+        };
+      }
+
+      // ── 左列：ボタン ──
+      var leftCol=el('div',{className:'prog-btn-col'});
+      if(isDone){
+        var ck=el('div',{className:'check-mark'},'✓');
+        if(canEdit){ck.onclick=function(){showEditDialog(p,canEdit,function(){doCancel(p.id);},function(t){doEditTime(p.id,t);});};}
+        else{ck.style.cursor='default';}
+        leftCol.appendChild(ck);
+      } else if(canEdit&&!state.isPaused&&!state.isEmergency){
+        var sb=el('button',{className:'start-btn'},'▶');
+        (function(pid,pname,sched){sb.onclick=function(){showStartConfirm(pname,sched,function(t){doStart(pid,t);});};})(p.id,p.program,p.scheduledTime);
+        leftCol.appendChild(sb);
+      } else if(canEdit){
+        var pb=el('button',{className:'start-btn paused-state'},'▶');
+        pb.disabled=true;
+        leftCol.appendChild(pb);
+      }
+
+      // ── 中列：情報 ──
+      var info=el('div',{className:'prog-info'});
+      info.appendChild(el('div',{className:'prog-sched'},p.scheduledTime||'--:--'));
+      info.appendChild(el('div',{className:'prog-name'},p.program));
+      if(p.target)info.appendChild(el('div',{className:'prog-target'},p.target));
+      // 注目バッジ
+      if(p.isFeatured){
+        var fbRow=el('div',{style:{display:'flex',alignItems:'center',gap:6,marginTop:3}});
+        fbRow.appendChild(el('span',{className:'featured-badge'},'★ 注目'));
+        if(p.featuredNote)fbRow.appendChild(el('span',{style:{fontSize:11,color:'#92400e',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'120px'}},p.featuredNote));
+        info.appendChild(fbRow);
+      }
+      if(isDone&&p.startedAt){
+        var metaStr=fmtISO(p.startedAt);
+        if(p.isEstimated){
+          var metaRow=el('div',{style:{display:'flex',alignItems:'center',gap:6,marginTop:2}});
+          metaRow.appendChild(el('span',{className:'started-meta'},metaStr));
+          metaRow.appendChild(el('span',{style:{fontSize:10,color:'var(--accent)',fontWeight:700,
+            border:'1px solid var(--accent)',borderRadius:4,padding:'1px 5px',letterSpacing:'.04em'}},'予測'));
+          info.appendChild(metaRow);
         } else {
-          throw new Error('（' + putRes.status + '）' + (putData.message || JSON.stringify(putData)));
+          var meta=metaStr+(p.operatorName?' ('+p.operatorName+')':'');
+          info.appendChild(el('div',{className:'started-meta'},meta));
         }
-      } catch (err) {
-        results.push({ path: targetPath, ok: false, error: err.message });
+      }
+
+      // ── 右列：時刻 ──
+      var right=el('div',{className:'time-right'});
+      if(isDone){
+        right.appendChild(el('span',{className:'time-label'},'開始'));
+        right.appendChild(el('div',{className:'time-val'},fmtISO(p.startedAt)||'--:--'));
+        if(p.scheduledTime){
+          var diff=Math.round((parseTimeToMs(fmtISO(p.startedAt))-parseTimeToMs(p.scheduledTime))/60000);
+          if(!isNaN(diff)&&diff!==0){
+            var tag=el('span',{className:diff>0?'delay-tag':'early-tag'},(diff>0?'+':'')+diff+'分');
+            right.appendChild(tag);
+          }
+        }
+      } else {
+        right.appendChild(el('span',{className:'time-label'},'予測'));
+        right.appendChild(el('div',{className:'time-val'},p._est||'--:--'));
+        // 差分を小さく補足表示
+        if(p._est&&p.scheduledTime){
+          var dMs=parseTimeToMs(p._est)-parseTimeToMs(p.scheduledTime);
+          if(!isNaN(dMs)){
+            var diffMin=Math.round(dMs/60000);
+            if(diffMin===0){
+              right.appendChild(el('span',{style:{fontFamily:'var(--mono)',fontSize:11,color:'var(--ink3)',display:'block',textAlign:'right',marginTop:2}},'定刻'));
+            } else {
+              var sign=diffMin>0?'+':'';
+              var col=diffMin>0?'var(--accent)':'#2e7d32';
+              right.appendChild(el('span',{style:{fontFamily:'var(--mono)',fontSize:12,color:col,display:'block',textAlign:'right',marginTop:2,fontWeight:'700'}},sign+diffMin+'分'));
+            }
+          }
+        }
+      }
+
+      row.appendChild(leftCol);
+      row.appendChild(info);
+      row.appendChild(right);
+      // ★ 注目登録ボタン（管理者・オペレータのみ）
+      if(canEdit){
+        var starBtn=el('button',{className:'featured-star '+(p.isFeatured?'on':'')});
+        starBtn.textContent=p.isFeatured?'★':'☆';
+        starBtn.title=p.isFeatured?'注目イベント登録済み（タップで編集/解除）':'注目イベントに登録';
+        (function(prog){starBtn.onclick=function(e){e.stopPropagation();showFeaturedRegister(prog);};})(p);
+        row.appendChild(starBtn);
+      }
+      progList.appendChild(row);
+    });
+  }
+
+  function refreshStatusBar(){
+    var curIdx=(state.programs||[]).reduce(function(a,p,i){return p.status==='started'?i:a;},-1);
+    if(state.isEmergency){statusDot.className='status-dot emergency';statusText.textContent='緊急停止中';}
+    else if(state.isPaused){statusDot.className='status-dot paused';statusText.textContent='一時停止中';}
+    else if(curIdx>=0){statusDot.className='status-dot running';statusText.textContent='進行中';}
+    else{statusDot.className='status-dot waiting';statusText.textContent='開始待機';}
+
+    // イベント名を全表示箇所に反映（常に最新stateから）
+    var titleText='進行（'+(state.eventName||'')+'）';
+    var ptEl=document.getElementById('prog-title-el');
+    if(ptEl)ptEl.textContent=titleText;
+    var atEl=document.getElementById('appbar-title-el');
+    if(atEl)atEl.textContent=state.eventName||'イベントNow！';
+
+    // 緊急停止バナー
+    if(emergBanner){emergBanner.style.display=state.isEmergency?'block':'none';}
+
+    // 一時停止オーバーレイ（緊急停止とは別）
+    overlayEl.style.display=state.isPaused?'block':'none';
+    if(state.isPaused){overlayEl.className='paused-overlay';overlayEl.textContent='⏸ 一時停止中';}
+
+    if(pauseBtn){
+      pauseBtn.textContent=state.isPaused?'▶ 再開':'一時停止';
+      pauseBtn.style.display=state.isEmergency?'none':'';
+      pauseBtn.style.background=state.isPaused?'#2e7d32':'#ed6c02';
+    }
+    if(emergBtn)emergBtn.style.display=state.isEmergency?'none':'';
+    if(resetBtn)resetBtn.style.display=state.isEmergency?'':'none';
+  }
+
+  // ── Tab switching ──
+  function scrollToNext(){
+    setTimeout(function(){
+      // documentレベルで探す（windowスクロール環境対応）
+      var labels=Array.from(document.querySelectorAll('.section-label'));
+      var target=labels.find(function(el){return el.textContent.indexOf('次の試合')>=0;});
+      if(!target)return;
+      var rect=target.getBoundingClientRect();
+      // sticky header合計高さ(appbar+tabs+statusbar≈140px)を引いた位置へ
+      window.scrollBy({top:rect.top-140,behavior:'smooth'});
+    },200);
+  }
+
+  function switchTab(tab){
+    activeTab=tab;
+    content.innerHTML='';
+    if(tab==='setup'){
+      tabSetup&&(tabSetup.className='tab active');tabProg&&(tabProg.className='tab');
+      content.appendChild(buildSetupTab());
+    } else {
+      tabProg&&(tabProg.className='tab active');tabSetup&&(tabSetup.className='tab');
+      if(!progTabEl)buildProgressTab();
+      content.appendChild(progTabEl);
+      renderPrograms();refreshStatusBar();
+    }
+  }
+
+  tabSetup&&(tabSetup.onclick=function(){switchTab('setup');});
+  tabProg&&(tabProg.onclick=function(){
+    switchTab('progress');
+    scrollToNext();
+  });
+
+  // ── Mutations ──
+  function upd(patch){
+    state=Object.assign({},state,patch,{_t:Date.now()});
+    if(state.programs)state.programs=toArray(state.programs);
+    dbSave(state.eventId,state,function(err){if(err)alert('保存エラー: '+err.message);});
+    if(activeTab==='progress'){renderPrograms();refreshStatusBar();}
+  }
+  function doStart(pid,timeStr){
+    var name=opName.trim()||state.adminName||'（未入力）';
+    var d=new Date();
+    if(timeStr){var parts=timeStr.split(':');d=new Date();d.setHours(+parts[0],+parts[1],0,0);}
+
+    var progs=toArray(state.programs);
+    var curIdx=progs.findIndex(function(p){return p.id===pid;});
+
+    // 最後に実績登録されたインデックスを探す（予測登録は除く）
+    var lastRealIdx=-1,lastRealTime=null;
+    progs.forEach(function(p,i){if(p.startedAt&&!p.isEstimated&&i<curIdx){lastRealIdx=i;lastRealTime=new Date(p.startedAt);}});
+
+    // 間にある未登録プログラム数をカウント
+    var gapIdxs=[];
+    for(var i=lastRealIdx+1;i<curIdx;i++){if(!progs[i].startedAt)gapIdxs.push(i);}
+
+    var autoCount=0;
+    var newProgs=progs.slice();
+
+    if(gapIdxs.length>0&&lastRealTime){
+      // 「最後の実績時刻」と「今回の登録時刻」を均等に分割
+      // 区間数 = gap件数 + 1（最後の実績→1件目→…→今回登録、の各区切り）
+      var totalMs=d.getTime()-lastRealTime.getTime();
+      var step=totalMs/(gapIdxs.length+1);
+      gapIdxs.forEach(function(idx,j){
+        var t=new Date(lastRealTime.getTime()+step*(j+1));
+        newProgs[idx]=Object.assign({},progs[idx],{
+          status:'started',startedAt:t.toISOString(),
+          operatorName:'（予測登録）',isEstimated:true
+        });
+        autoCount++;
+      });
+    }
+
+    // 今回登録するプログラム
+    newProgs[curIdx]=Object.assign({},progs[curIdx],{
+      status:'started',startedAt:d.toISOString(),
+      operatorName:name,isEstimated:false
+    });
+
+    upd({programs:newProgs});
+    if(autoCount>0)showSnackbar(autoCount+'件を均等割の予測時刻で自動登録しました');
+  }
+  function doCancel(pid){upd({programs:state.programs.map(function(p){return p.id===pid?Object.assign({},p,{status:'pending',startedAt:null,operatorName:null}):p;})});}
+  function doEditTime(pid,newTime){
+    var now=new Date();var d=new Date(now);
+    var parts=newTime.split(':');d.setHours(+parts[0],+parts[1],0,0);
+    upd({programs:state.programs.map(function(p){return p.id===pid?Object.assign({},p,{startedAt:d.toISOString()}):p;})});
+  }
+
+  // ── Firebase realtime ──
+  dbListen(state.eventId,function(fresh){
+    if(!fresh)return;
+    if(fresh.programs)fresh.programs=toArray(fresh.programs);
+    // ローカルの最新 _t より古いFirebaseデータは無視（upd()後の上書き防止）
+    if((fresh._t||0) < (state._t||0))return;
+    if(JSON.stringify(fresh)!==JSON.stringify(state)){
+      state=fresh;
+      if(activeTab==='progress'){
+        try{renderPrograms();}catch(e){console.error('renderPrograms error',e);}
+        try{refreshStatusBar();}catch(e){console.error('refreshStatusBar error',e);}
       }
     }
-
-    const okResults = results.filter((r) => r.ok);
-    const ngResults = results.filter((r) => !r.ok);
-
-    if (okResults.length) recordUsage(repo);
-
-    let summary = '';
-    if (!ngResults.length) {
-      summary = '✔ ' + results.length + '件すべてアップロード完了しました。<br>' +
-        okResults.map((r) => r.path + (r.commitUrl ? '（<a href="' + r.commitUrl + '" target="_blank" rel="noopener">コミット</a>）' : '')).join('<br>');
-      showStatus('success', summary);
-    } else {
-      summary = '✔ 成功 ' + okResults.length + '件 / ✖ 失敗 ' + ngResults.length + '件<br>';
-      if (okResults.length) summary += okResults.map((r) => '✔ ' + r.path).join('<br>') + '<br>';
-      summary += ngResults.map((r) => '✖ ' + r.path + '：' + r.error).join('<br>');
-      summary += '<br><span style="opacity:0.8">失敗分はトークンの権限・リポジトリ名・ブランチ名・パスをご確認の上、再度お試しください。</span>';
-      showStatus(okResults.length ? 'info' : 'error', summary);
-    }
-
-    uploadBtn.disabled = false;
   });
+  _ck=setInterval(function(){tickClock();var hc=document.getElementById("hdr-clock");if(hc)hc.textContent=fmtDate(new Date());},15000);
+
+  render(root);
+  switchTab(activeTab);
+  // 進行タブで開始時は「次の試合」へスクロール（閲覧URL・イベント切替を含む）
+  if(activeTab==='progress')scrollToNext();
+}
+
+// SVG icons
+function svgIcon(type){
+  var s=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  s.setAttribute('width','22');s.setAttribute('height','22');s.setAttribute('viewBox','0 0 24 24');
+  s.style.stroke='currentColor';s.style.strokeWidth='1.8';s.style.fill='none';
+  var p=document.createElementNS('http://www.w3.org/2000/svg','path');
+  if(type==='setup'){p.setAttribute('d','M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z');}
+  else{p.setAttribute('d','M4 6h16M4 12h16M4 18h16');}
+  s.appendChild(p);return s;
+}
+
+// ══ ③ Loader ══
+function mountLoader(eventId,role,opKey){
+  clearTimers();
+  var spinWrap=el('div',{style:{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,color:'#64748b',background:'#f0eef8'}});
+  spinWrap.appendChild(el('div',{className:'spinner'}));
+  spinWrap.appendChild(el('div',{style:{fontSize:14,fontWeight:'600'}},'データを読み込み中…'));
+  spinWrap.appendChild(el('div',{style:{fontSize:11,color:'#94a3b8'}},'Event ID: '+eventId));
+  render(spinWrap);
+  dbLoad(eventId,function(err,s){
+    if(err){render(el('div',{style:{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:12,padding:24,textAlign:'center',background:'#f0eef8'}},[el('div',{style:{fontSize:32}},'⚠️'),el('div',{style:{fontWeight:'700',color:'#d32f2f'}},'取得失敗'),el('div',{style:{fontSize:12,color:'#64748b'}},err.message)]));return;}
+    if(!s){
+      var waiting=el('div',{style:{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,color:'#64748b',background:'#f0eef8',padding:24,textAlign:'center'}});
+      waiting.appendChild(el('div',{className:'spinner',style:{borderTopColor:'#ed6c02'}}));
+      waiting.appendChild(el('div',{style:{fontSize:14,fontWeight:'600'}},'イベントの開始を待機中…'));
+      waiting.appendChild(el('div',{style:{fontSize:12,color:'#94a3b8'}},'管理者が進行を開始すると自動表示されます'));
+      render(waiting);
+      dbListen(eventId,function(fs){if(fs)mountMain(fs,role,opKey);});
+      return;
+    }
+    mountMain(s,role,opKey);
+  });
+}
+
+// ══ ④ Admin Setup ══
+
+// ── イベント一覧のlocalStorage管理 ──
+var EVT_LIST_KEY='evtm_events_list';
+var EVT_ACTIVE_KEY='evtm_active';
+
+function getEventsList(){try{return JSON.parse(localStorage.getItem(EVT_LIST_KEY)||'[]');}catch(e){return[];}}
+function saveEventToList(meta){
+  var list=getEventsList();
+  var idx=list.findIndex(function(e){return e.eventId===meta.eventId;});
+  var entry=Object.assign({lastUpdated:Date.now()},meta);
+  if(idx>=0)list[idx]=entry; else list.unshift(entry);
+  localStorage.setItem(EVT_LIST_KEY,JSON.stringify(list.slice(0,10)));
+  localStorage.setItem(EVT_ACTIVE_KEY,meta.eventId);
+}
+function removeEventFromList(eventId){
+  var list=getEventsList().filter(function(e){return e.eventId!==eventId;});
+  localStorage.setItem(EVT_LIST_KEY,JSON.stringify(list));
+  if(localStorage.getItem(EVT_ACTIVE_KEY)===eventId)localStorage.removeItem(EVT_ACTIVE_KEY);
+}
+
+function mountAdminSetup(){
+  clearTimers();
+  // 旧形式(evtm_current_event)を新形式に移行
+  try{
+    var old=JSON.parse(localStorage.getItem('evtm_current_event')||'null');
+    if(old&&old.eventId){
+      saveEventToList({eventId:old.eventId,opKey:old.opKey,eventName:old.eventName||'（無題）',adminName:old.adminName||''});
+      localStorage.removeItem('evtm_current_event');
+    }
+  }catch(e){}
+
+  var list=getEventsList();
+  if(list.length>0){mountEventList();}
+  else{showSetupForm(null);}
+}
+
+// ── イベント一覧画面 ──
+// ══ 履歴機能 ══
+var HIST_LIST_KEY='evtm_history_list';
+var HIST_DB_PATH='history';
+var HIST_MAX=30;
+
+function getHistoryList(){try{return JSON.parse(localStorage.getItem(HIST_LIST_KEY)||'[]');}catch(e){return[];}}
+function addHistoryMeta(meta){
+  var list=getHistoryList();
+  list.unshift(meta);
+  localStorage.setItem(HIST_LIST_KEY,JSON.stringify(list.slice(0,HIST_MAX)));
+}
+function removeHistoryMeta(histId){
+  localStorage.setItem(HIST_LIST_KEY,JSON.stringify(getHistoryList().filter(function(h){return h.histId!==histId;})));
+}
+
+// 現在のイベントをFirebaseに履歴として保存
+function saveHistory(state,onDone){
+  var histId=state.eventId+'_'+Date.now();
+  var snap={
+    histId:histId,eventId:state.eventId,eventName:state.eventName,
+    adminName:state.adminName,savedAt:new Date().toISOString(),
+    programs:toArray(state.programs)
+  };
+  _db.ref(HIST_DB_PATH+'/'+histId).set(snap,function(err){
+    if(err){showSnackbar('保存エラー: '+err.message);if(onDone)onDone(err);return;}
+    addHistoryMeta({histId:histId,eventName:state.eventName,savedAt:snap.savedAt,eventId:state.eventId});
+    if(onDone)onDone(null);
+  });
+}
+
+// Firebase から履歴データを取得
+function loadHistory(histId,callback){
+  _db.ref(HIST_DB_PATH+'/'+histId).once('value',function(snap){
+    callback(snap.val());
+  },function(err){callback(null);});
+}
+
+// 履歴一覧画面
+function mountHistoryList(fromTab){
+  var list=getHistoryList();
+  var wrap=el('div',{style:{minHeight:'100vh',background:'var(--bg)',display:'flex',flexDirection:'column'}});
+  wrap.appendChild(el('div',{className:'appbar'},[
+    el('span',{className:'appbar-title'},'履歴'),
+    el('span',{className:'appbar-right'},fmtDate(new Date())),
+  ]));
+
+  var inner=el('div',{style:{flex:1,overflowY:'auto',maxWidth:560,margin:'0 auto',width:'100%',paddingBottom:'32px'}});
+
+  var backBtn=el('button',{className:'btn btn-gray',style:{margin:'16px 18px 0',width:'calc(100% - 36px)'}},'← イベント一覧に戻る');
+  backBtn.onclick=function(){mountEventList();};
+  inner.appendChild(backBtn);
+
+  inner.appendChild(el('div',{className:'section-label'},'保存済みの履歴'));
+
+  if(list.length===0){
+    inner.appendChild(el('div',{style:{padding:'32px 18px',color:'var(--ink3)',fontSize:14,textAlign:'center'}},'履歴はまだありません'));
+  }
+
+  list.forEach(function(h){
+    var row=el('div',{style:{display:'flex',alignItems:'center',gap:12,padding:'14px 18px',borderBottom:'1px solid var(--rule)',background:'white',cursor:'pointer'}});
+    var info=el('div',{style:{flex:1,minWidth:0}});
+    var dateStr=h.savedAt?new Date(h.savedAt).toLocaleDateString('ja-JP',{year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+    info.appendChild(el('div',{style:{fontSize:16,fontWeight:700,color:'var(--ink)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},h.eventName||'（無題）'));
+    info.appendChild(el('div',{style:{fontSize:11,color:'var(--ink3)',marginTop:3,fontFamily:'var(--mono)'}},dateStr));
+    var delBtn=el('button',{style:{background:'none',border:'none',color:'var(--ink3)',fontSize:18,cursor:'pointer',padding:'4px 8px',flexShrink:0}},'×');
+    delBtn.onclick=function(e){
+      e.stopPropagation();
+      showConfirm('この履歴を削除しますか？',function(){
+        _db.ref(HIST_DB_PATH+'/'+h.histId).remove();
+        removeHistoryMeta(h.histId);
+        mountHistoryList();
+      });
+    };
+    row.onclick=function(){mountHistoryDetail(h.histId,h.eventName);};
+    row.appendChild(info);row.appendChild(delBtn);
+    inner.appendChild(row);
+  });
+
+  wrap.appendChild(inner);render(wrap);
+}
+
+// 履歴詳細画面（読み取り専用）
+function mountHistoryDetail(histId,eventName){
+  var spin=el('div',{style:{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:14,background:'var(--bg)'}});
+  spin.appendChild(el('div',{className:'spinner'}));
+  spin.appendChild(el('div',{style:{fontSize:14,fontWeight:700,color:'var(--ink2)'}},'履歴を読み込み中…'));
+  render(spin);
+
+  loadHistory(histId,function(data){
+    if(!data){showSnackbar('履歴が見つかりません');mountHistoryList();return;}
+    var progs=toArray(data.programs);
+    var savedStr=data.savedAt?new Date(data.savedAt).toLocaleDateString('ja-JP',{year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+
+    var wrap=el('div',{style:{minHeight:'100vh',background:'var(--bg)',display:'flex',flexDirection:'column'}});
+    wrap.appendChild(el('div',{className:'appbar'},[
+      el('span',{className:'appbar-title',style:{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},data.eventName||'履歴'),
+      el('span',{className:'appbar-right'},fmtDate(new Date())),
+    ]));
+
+    var inner=el('div',{style:{flex:1,overflowY:'auto',maxWidth:560,margin:'0 auto',width:'100%',paddingBottom:'32px'}});
+
+    // 戻るボタン
+    var backBtn=el('button',{className:'btn btn-gray',style:{margin:'16px 18px 0',width:'calc(100% - 36px)'}},'← 履歴一覧に戻る');
+    backBtn.onclick=function(){mountHistoryList();};
+    inner.appendChild(backBtn);
+
+    // 保存情報
+    inner.appendChild(el('div',{className:'card',style:{margin:'12px 18px 0'}},[
+      el('div',{style:{fontSize:13,color:'var(--ink3)'}},'保存日時: '+savedStr),
+      el('div',{style:{fontSize:13,color:'var(--ink3)',marginTop:4}},'担当: '+(data.adminName||'—')),
+    ]));
+
+    // CSVエクスポート
+    var csvBtn=el('button',{className:'btn btn-primary',style:{margin:'8px 18px',width:'calc(100% - 36px)'}}, '📊 このイベントの実績CSVを出力');
+    csvBtn.onclick=function(){exportHistoryCsv(data);};
+    inner.appendChild(csvBtn);
+
+    inner.appendChild(el('div',{className:'section-label'},'プログラム一覧（'+progs.length+'件）'));
+
+    // プログラム一覧（読み取り専用）
+    progs.forEach(function(p){
+      var isDone=!!p.startedAt;
+      var row=el('div',{style:{
+        display:'flex',alignItems:'center',gap:12,padding:'12px 18px',
+        borderBottom:'1px solid var(--rule)',
+        background:isDone?(p.isEstimated?'repeating-linear-gradient(135deg,#f7f7f7 0px,#f7f7f7 6px,#fafafa 6px,#fafafa 12px)':'#f7fdf6'):'white'
+      }});
+
+      // 状態ドット
+      var dot=el('div',{style:{width:8,height:8,borderRadius:'50%',flexShrink:0,
+        background:isDone?(p.isEstimated?'#aaa':'#3a7'):'var(--rule)',marginTop:2}});
+
+      var info=el('div',{style:{flex:1,minWidth:0}});
+      info.appendChild(el('div',{style:{fontSize:11,color:'var(--ink3)',fontFamily:'var(--mono)'}},(p.scheduledTime||'--:--')));
+      var nameRow=el('div',{style:{display:'flex',alignItems:'center',gap:6}});
+      nameRow.appendChild(el('span',{style:{fontSize:17,fontWeight:isDone?700:400,color:isDone?'var(--ink)':'var(--ink3)',textDecoration:p.isEstimated?'line-through':'none'}},p.program||''));
+      if(p.isEstimated)nameRow.appendChild(el('span',{style:{fontSize:10,color:'var(--accent)',border:'1px solid var(--accent)',borderRadius:4,padding:'1px 4px'}},'予測'));
+      info.appendChild(nameRow);
+      if(p.target)info.appendChild(el('div',{style:{fontSize:11,color:'var(--ink3)'}},p.target));
+
+      // 右：実績時刻
+      var right=el('div',{style:{textAlign:'right',flexShrink:0}});
+      if(isDone){
+        right.appendChild(el('div',{style:{fontSize:11,color:'var(--ink3)'}},'開始'));
+        right.appendChild(el('div',{style:{fontSize:20,fontWeight:700,fontFamily:'var(--mono)',color:p.isEstimated?'#aaa':'var(--ink)'}},fmtISO(p.startedAt)||'--:--'));
+        if(p.scheduledTime){
+          var diff=Math.round((parseTimeToMs(fmtISO(p.startedAt))-parseTimeToMs(p.scheduledTime))/60000);
+          if(!isNaN(diff)&&diff!==0){
+            right.appendChild(el('span',{style:{fontSize:11,color:diff>0?'var(--accent)':'#3a7',fontFamily:'var(--mono)'}},(diff>0?'+':'')+diff+'分'));
+          }
+        }
+      }
+
+      row.appendChild(dot);row.appendChild(info);row.appendChild(right);
+      inner.appendChild(row);
+    });
+
+    wrap.appendChild(inner);render(wrap);
+  });
+}
+
+// 履歴からCSVエクスポート
+function exportHistoryCsv(data){
+  function parseMs(t){if(!t)return 0;var p=t.split(':');return(+p[0])*3600000+(+p[1])*60000;}
+  var progs=toArray(data.programs);
+  var lines=['\uFEFF'+'プログラム,対象,予定時刻,実績開始時刻,差分(分),担当者,登録種別'];
+  progs.forEach(function(p){
+    var actual=p.startedAt?fmtISO(p.startedAt):'';
+    var diff='';
+    if(p.startedAt&&p.scheduledTime){var dMs=parseMs(fmtISO(p.startedAt))-parseMs(p.scheduledTime);if(!isNaN(dMs))diff=Math.round(dMs/60000);}
+    lines.push([p.program||'',p.target||'',p.scheduledTime||'',actual,diff,p.isEstimated?'（予測登録）':(p.operatorName||''),!p.startedAt?'未登録':p.isEstimated?'予測':'実績'].join(','));
+  });
+  var blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=(data.eventName||'event')+'_'+new Date(data.savedAt).toLocaleDateString('ja-JP').replace(/\//g,'-')+'_実績.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+  showSnackbar('CSVをダウンロードしました');
+}
+
+
+function mountEventList(){
+  clearTimers();
+  var list=getEventsList();
+  var activeId=localStorage.getItem(EVT_ACTIVE_KEY);
+
+  var wrap=el('div',{style:{minHeight:'100vh',background:'var(--bg)',display:'flex',flexDirection:'column'}});
+  wrap.appendChild(el('div',{className:'appbar'},[
+    el('span',{className:'appbar-title'},'イベントNow！'),
+    el('span',{className:'appbar-right'},fmtDate(new Date())),
+  ]));
+
+  var inner=el('div',{style:{flex:1,overflowY:'auto',maxWidth:560,margin:'0 auto',width:'100%',paddingBottom:'32px'}});
+  inner.appendChild(el('div',{className:'section-label'},'イベントを選択'));
+
+  list.forEach(function(evt){
+    var isActive=evt.eventId===activeId;
+    var row=el('div',{style:{display:'flex',alignItems:'center',gap:12,padding:'16px 18px',borderBottom:'1px solid var(--rule)',background:isActive?'#f7f5ff':'white',cursor:'pointer'}});
+    var dot=el('div',{style:{width:8,height:8,borderRadius:'50%',flexShrink:0,background:isActive?'var(--accent)':'var(--rule)'}});
+    var info=el('div',{style:{flex:1,minWidth:0}});
+    info.appendChild(el('div',{style:{fontSize:17,fontWeight:700,color:'var(--ink)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},evt.eventName||'（無題）'));
+    var dateStr=evt.lastUpdated?new Date(evt.lastUpdated).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+    info.appendChild(el('div',{style:{fontSize:11,color:'var(--ink3)',marginTop:3,fontFamily:'var(--mono)'}},evt.eventId+(dateStr?' — '+dateStr:'')));
+    var delBtn=el('button',{style:{background:'none',border:'none',color:'var(--ink3)',fontSize:18,cursor:'pointer',padding:'4px 8px',flexShrink:0}},'×');
+    delBtn.onclick=function(e){
+      e.stopPropagation();
+      showConfirm('「'+evt.eventName+'」を一覧から削除しますか？\n（Firebaseのデータは残ります）',function(){
+        removeEventFromList(evt.eventId);mountEventList();
+      });
+    };
+    row.onclick=function(){
+      var spin=el('div',{style:{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:14,background:'var(--bg)'}});
+      spin.appendChild(el('div',{className:'spinner'}));
+      spin.appendChild(el('div',{style:{fontSize:14,fontWeight:700,color:'var(--ink2)'}},'読み込み中…'));
+      render(spin);
+      localStorage.setItem(EVT_ACTIVE_KEY,evt.eventId);
+      dbLoad(evt.eventId,function(err,s){
+        if(!err&&s){mountMain(s,'admin',null);return;}
+        showSetupForm({eventId:evt.eventId,opKey:evt.opKey,eventName:evt.eventName,adminName:evt.adminName,programs:[]});
+      });
+    };
+    row.appendChild(dot);row.appendChild(info);row.appendChild(delBtn);
+    inner.appendChild(row);
+  });
+
+  var newBtn=el('button',{className:'btn btn-primary',style:{margin:'20px 18px 8px',width:'calc(100% - 36px)',padding:'14px',fontSize:15}},'＋ 新規イベントを作成');
+  newBtn.onclick=function(){showSetupForm(null);};
+  inner.appendChild(newBtn);
+  var histBtn=el('button',{className:'btn btn-gray',style:{margin:'0 18px 8px',width:'calc(100% - 36px)',padding:'12px',fontSize:14}},'📋 履歴を見る');
+  histBtn.onclick=function(){mountHistoryList();};
+  inner.appendChild(histBtn);
+
+  var recCard=el('div',{className:'card',style:{margin:'0 18px 16px'}});
+  recCard.appendChild(el('div',{className:'section-title'},'イベント復帰（ID入力）'));
+  var recInp=el('input',{className:'recovery-inp',placeholder:'Event ID を入力'});
+  var recBtn=el('button',{className:'btn btn-primary',style:{flexShrink:0,padding:'9px 14px',fontSize:13}},'復帰');
+  recBtn.onclick=function(){
+    var id=recInp.value.trim();if(!id)return;
+    recBtn.disabled=true;recBtn.textContent='読込中…';
+    dbLoad(id,function(err,s){
+      recBtn.disabled=false;recBtn.textContent='復帰';
+      if(err||!s){showSnackbar('見つかりません: '+id);return;}
+      saveEventToList({eventId:s.eventId,opKey:s.opKey,eventName:s.eventName,adminName:s.adminName});
+      mountMain(s,'admin',null);
+    });
+  };
+  recCard.appendChild(el('div',{className:'recovery-row'},[recInp,recBtn]));
+  inner.appendChild(recCard);
+
+  var resetLink=el('span',{style:{fontSize:11,color:'#94a3b8',cursor:'pointer',textDecoration:'underline',display:'block',textAlign:'center',padding:'8px'}},'Firebase設定を変更');
+  resetLink.onclick=function(){showConfirm('Firebase設定を変更しますか？',function(){localStorage.removeItem(fbCfgKey());location.reload();});};
+  inner.appendChild(resetLink);
+
+  wrap.appendChild(inner);render(wrap);
+}
+
+// ── 新規イベント作成フォーム ──
+function showSetupForm(savedData){
+  var eventId   = (savedData&&savedData.eventId)  ? savedData.eventId  : uid();
+  var opKey     = (savedData&&savedData.opKey)    ? savedData.opKey    : uid();
+  var eventName = (savedData&&savedData.eventName)? savedData.eventName: '';
+  var adminName = (savedData&&savedData.adminName)? savedData.adminName: '運営管理者';
+  var programs  = (savedData&&savedData.programs) ? savedData.programs : [];
+
+  function persistLocal(){saveEventToList({eventId:eventId,opKey:opKey,eventName:eventName||'（無題）',adminName:adminName});}
+
+  var inpEvt=el('input',{className:'field-inp',type:'text',placeholder:'例: レディース団体戦',style:{background:'white',borderRadius:'8px 8px 0 0'}});
+  inpEvt.value=eventName;inpEvt.oninput=function(){eventName=inpEvt.value;persistLocal();};
+
+  var inpAdm=el('input',{className:'field-inp',type:'text',placeholder:'運営管理者',style:{background:'white',borderRadius:'8px 8px 0 0'}});
+  inpAdm.value=adminName;inpAdm.oninput=function(){adminName=inpAdm.value;};
+
+  var csvMsg=el('div',{style:{fontSize:13,color:'#2e7d32',fontWeight:'600',marginLeft:8}},programs.length?'✓ '+programs.length+'件':'');
+  var csvBtn=el('button',{className:'btn btn-primary',style:{flexShrink:0,borderRadius:10}},'CSV取り込み');
+  var fileInput=el('input',{type:'file',accept:'.csv,.txt',style:{display:'none'}});
+  csvBtn.onclick=function(){fileInput.click();};
+  fileInput.onchange=function(){
+    var f=fileInput.files[0];if(!f)return;
+    fileInput.value='';
+    var baseName=f.name.replace(/\.[^.]+$/,'');
+    function doAdminLoad(changeName){
+      if(changeName&&baseName){eventName=baseName;inpEvt.value=baseName;persistLocal();applyEventName(baseName);}
+      readCsvFile(f,function(text){
+        var newProgs=csvParse(text);
+        if(!newProgs.length){csvMsg.textContent='（0件）';return;}
+        var startedMap={};
+        toArray(programs).forEach(function(p){if(p.startedAt){var k=p.program+'|'+p.scheduledTime;startedMap[k]={startedAt:p.startedAt,operatorName:p.operatorName||null};}});
+        var merged=0;
+        newProgs=newProgs.map(function(p){var k=p.program+'|'+p.scheduledTime;if(startedMap[k]){merged++;return Object.assign({},p,{startedAt:startedMap[k].startedAt,operatorName:startedMap[k].operatorName});}return p;});
+        programs=newProgs;persistLocal();
+        csvMsg.textContent='✓ '+programs.length+'件'+(merged>0?'（開始済 '+merged+'件引き継ぎ）':'');
+      });
+    }
+    if(baseName&&eventName&&eventName.trim()&&eventName!==baseName){
+      showConfirm('CSVを読み込みます。\nイベント名もファイル名に変更しますか？\n\n変更後: '+baseName,
+        function(){doAdminLoad(true);},null,
+        {okLabel:'イベント名も変更して読み込む',subLabel:'イベント名は変えず読み込む',subAction:function(){doAdminLoad(false);}});
+    } else {doAdminLoad(true);}
+  };
+
+  var goBtn=el('button',{className:'btn btn-primary',style:{width:'100%',borderRadius:10,padding:14,fontSize:15}},'進行管理を開始 →');
+  var goMsg=el('div',{style:{fontSize:12,color:'#d32f2f',textAlign:'center',marginTop:6}});
+  goBtn.onclick=function(){
+    if(!eventName.trim()){showSnackbar('イベント名を入力してください');return;}
+    if(!programs.length){showSnackbar('CSVからプログラムを読み込んでください');return;}
+    goBtn.disabled=true;goBtn.style.opacity='.6';goBtn.textContent='保存中…';
+    var state={eventId:eventId,opKey:opKey,eventName:eventName,adminName:adminName,programs:programs,isPaused:false,isEmergency:false,_t:Date.now()};
+    saveEventToList({eventId:eventId,opKey:opKey,eventName:eventName,adminName:adminName});
+    dbSave(eventId,state,function(err){
+      if(err){goBtn.disabled=false;goBtn.style.opacity='';goBtn.textContent='進行管理を開始 →';goMsg.textContent='エラー: '+err.message;return;}
+      mountMain(state,'admin',null);
+    });
+  };
+
+  var backBtn=el('button',{className:'btn btn-gray',style:{width:'100%',marginBottom:8}},'← イベント一覧に戻る');
+  backBtn.onclick=function(){mountEventList();};
+
+  var inner=el('div',{style:{maxWidth:480,margin:'0 auto',paddingBottom:'32px'}});
+  inner.appendChild(el('div',{className:'card'},[
+    el('div',{className:'section-title'},'新規イベント設定'),
+    el('div',{style:{marginBottom:14}},[el('div',{className:'field-label'},'イベント名（必須）'),inpEvt]),
+    el('div',null,[el('div',{className:'field-label'},'あなたの名前'),inpAdm]),
+    el('div',{style:{display:'flex',alignItems:'center',gap:8,marginTop:14}},[csvBtn,fileInput,csvMsg]),
+    el('div',{style:{marginTop:14}},[el('div',{className:'field-label'},'イベントID'),el('div',{style:{fontFamily:'monospace',fontSize:13,color:'#5b4fcf',background:'#f0eef8',borderRadius:8,padding:'6px 10px',marginTop:4}},eventId)]),
+  ]));
+  inner.appendChild(el('div',{className:'card'},[
+    el('div',{className:'csv-info'},[
+          el('b',null,'CSVの形式'),el('br'),
+          '列構成：時刻,対象,プログラム[,注目メモ]',el('br'),
+          '例）08:20,全校,開会式,,',el('br'),
+          '例）09:45,3部,3-A-1,決勝進出者注目！',el('br'),
+          el('span',{style:{color:'#2e7d32',fontSize:11}},'※ 4列目に文字があると注目イベントに自動登録されます'),
+        ]),
+  ]));
+  inner.appendChild(el('div',{className:'card'},[goBtn,goMsg]));
+  inner.appendChild(el('div',{style:{padding:'0 0 8px'}},[backBtn]));
+
+  var wrap=el('div',{style:{minHeight:'100vh',background:'var(--bg)',display:'flex',flexDirection:'column'}});
+  wrap.appendChild(el('div',{className:'appbar'},[el('span',{className:'appbar-title'},'新規イベント'),el('span',{className:'appbar-right'},fmtDate(new Date()))]));
+  wrap.appendChild(el('div',{style:{flex:1,overflowY:'auto'}},inner));
+  render(wrap);
+}
+
+// ══ Boot ══
+(function(){
+  var r=parseHash();
+  var cfg=loadCfg();
+  function boot(){
+    if(r.mode==='viewer')mountLoader(r.eventId,'viewer',null);
+    else if(r.mode==='operator')mountLoader(r.eventId,'operator',r.opKey);
+    else if(r.mode==='manage')mountLoader(r.eventId,'admin',null);
+    else mountAdminSetup();
+  }
+  // HTMLに設定が埋め込まれていてlocalStorageに未保存の場合→自動取得
+  if(!cfg&&__EMBEDDED_CFG__){
+    try{
+      saveCfg(__EMBEDDED_CFG__);
+      cfg=__EMBEDDED_CFG__;
+    }catch(e){}
+  }
+  if(!cfg){mountFbSetup(boot);return;}
+  if(!initFb(cfg)){localStorage.removeItem(fbCfgKey());mountFbSetup(boot);return;}
+  boot();
+})();
 </script>
 </body>
 </html>
