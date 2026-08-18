@@ -739,9 +739,11 @@
       }
     } else {
       pathLabel.textContent = 'リポジトリ内の配置パス';
-      pathHint.textContent = '1ファイルのみ選択時は、このパスがそのままファイル名として使われます。複数ファイル選択時は、ここは配置先フォルダ（空欄ならリポジトリ直下）として扱われ、各ファイルは元のファイル名のまま配置されます。';
-      if (!pathTouchedByUser && pathInputEl.value.trim() === '') {
-        pathInputEl.value = 'index.html';
+      pathHint.textContent = '1ファイルのみ選択時は、このパスがそのままファイル名として使われます。パス欄を自分で編集していない場合は、選んだファイルの名前が自動で入ります。複数ファイル選択時は、ここは配置先フォルダ（空欄ならリポジトリ直下）として扱われ、各ファイルは元のファイル名のまま配置されます。';
+      // パス欄を自分で編集していない場合は、選んだファイルの名前をそのまま使う
+      // （index.html固定にしてしまうと、別名のファイルまで index.html として上書きされてしまうため）
+      if (!pathTouchedByUser && selectedFiles.length === 1) {
+        pathInputEl.value = selectedFiles[0].name;
       }
     }
   }
