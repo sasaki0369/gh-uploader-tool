@@ -711,14 +711,26 @@
     if (fileInput.files.length) handleFiles(fileInput.files);
   });
 
+  // ブラウザが重複ダウンロード時に付ける "index (1).html" "index-1.html" のような
+  // 連番サフィックスを取り除き、本来のファイル名に正規化する
+  // 例: "index (1).html" → "index.html" / "index-1.html" → "index.html" / "clip-web (1).html" → "clip-web.html"
+  function normalizeUploadFileName(name) {
+    const m = name.match(/^(.*?)(?:\s*\(\d+\)|-\d+)(\.[^./\\]+)$/);
+    return m ? (m[1] + m[2]) : name;
+  }
+
   function handleFiles(fileList) {
     selectedFiles = Array.from(fileList);
     if (selectedFiles.length === 1) {
       const f = selectedFiles[0];
-      fileNameEl.textContent = f.name + '（' + Math.round(f.size / 1024) + ' KB）';
+      const normalized = normalizeUploadFileName(f.name);
+      fileNameEl.textContent = normalized + (normalized !== f.name ? '（元のファイル名: ' + f.name + '）' : '') + '（' + Math.round(f.size / 1024) + ' KB）';
     } else {
       const totalKb = Math.round(selectedFiles.reduce((sum, f) => sum + f.size, 0) / 1024);
-      const names = selectedFiles.map((f) => f.name).join(', ');
+      const names = selectedFiles.map((f) => {
+        const normalized = normalizeUploadFileName(f.name);
+        return normalized !== f.name ? normalized + '（元: ' + f.name + '）' : normalized;
+      }).join(', ');
       fileNameEl.textContent = selectedFiles.length + '個のファイルを選択（計 ' + totalKb + ' KB）：' + names;
     }
     updatePathUiForFileCount();
@@ -743,7 +755,7 @@
       // パス欄を自分で編集していない場合は、選んだファイルの名前をそのまま使う
       // （index.html固定にしてしまうと、別名のファイルまで index.html として上書きされてしまうため）
       if (!pathTouchedByUser && selectedFiles.length === 1) {
-        pathInputEl.value = selectedFiles[0].name;
+        pathInputEl.value = normalizeUploadFileName(selectedFiles[0].name);
       }
     }
   }
@@ -1000,9 +1012,10 @@
     // 単一ファイル: パス欄をそのままファイルパスとして使う
     // 複数ファイル: パス欄を配置先フォルダとして扱い、各ファイルは元のファイル名で配置する
     const targets = selectedFiles.map((file) => {
+      const normalizedName = normalizeUploadFileName(file.name);
       const targetPath = selectedFiles.length === 1
         ? pathInput
-        : (pathInput ? pathInput + '/' + file.name : file.name);
+        : (pathInput ? pathInput + '/' + normalizedName : normalizedName);
       return { file, targetPath };
     });
 
