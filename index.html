@@ -905,18 +905,42 @@
     });
 
     // リポジトリ内に既に同じパスのファイルがあるか確認し、上書き対象か新規作成かをその場で表示する
-    rowEls.forEach(({ existing, targetPath }) => {
-      fetchExistingFileInfo(ctx, targetPath).then((info) => {
+    // サイズ確認が終わるまでアップロードボタンを一時的に無効化する
+    ctx.riskyFiles = [];
+    confirmOkBtn.disabled = true;
+    const originalOkLabel = confirmOkBtn.textContent;
+    confirmOkBtn.textContent = 'サイズを確認中…';
+
+    const checks = ctx.targets.map(({ file, targetPath }) => {
+      const rowEl = rowEls.find((r) => r.targetPath === targetPath);
+      return fetchExistingFileInfo(ctx, targetPath).then((info) => {
         if (pendingUploadCtx !== ctx) return; // モーダルが既に閉じられている場合は反映しない
         if (info.exists === true) {
-          existing.innerHTML = 'リポジトリ内の現在の状態: <span style="color:var(--accent);">既存ファイルあり（' + Math.round((info.size || 0) / 1024) + ' KB、上書きされます）</span>' +
+          const oldSize = info.size || 0;
+          const newSize = file.size;
+          const diffPercent = oldSize > 0 ? Math.abs(newSize - oldSize) / oldSize * 100 : (newSize > 0 ? 100 : 0);
+          const sizeWarning = diffPercent >= 10;
+
+          let statusHtml = 'リポジトリ内の現在の状態: <span style="color:var(--accent);">既存ファイルあり（' + Math.round(oldSize / 1024) + ' KB、上書きされます）</span>' +
             (info.htmlUrl ? ' <a href="' + info.htmlUrl + '" target="_blank" rel="noopener">確認</a>' : '');
+
+          if (sizeWarning) {
+            statusHtml += '<br><span style="color:var(--error); font-weight:600;">⚠ サイズが元のファイルと ' + Math.round(diffPercent) + '% 異なります（' + Math.round(oldSize / 1024) + ' KB → ' + Math.round(newSize / 1024) + ' KB）</span>';
+            ctx.riskyFiles.push({ targetPath, oldSize, newSize, diffPercent });
+          }
+          if (rowEl) rowEl.existing.innerHTML = statusHtml;
         } else if (info.exists === false) {
-          existing.innerHTML = 'リポジトリ内の現在の状態: <span style="color:var(--success);">新規作成されます（同名ファイルはまだありません）</span>';
+          if (rowEl) rowEl.existing.innerHTML = 'リポジトリ内の現在の状態: <span style="color:var(--success);">新規作成されます（同名ファイルはまだありません）</span>';
         } else {
-          existing.textContent = 'リポジトリ内の現在の状態: 確認できませんでした（権限やパスをご確認ください）';
+          if (rowEl) rowEl.existing.textContent = 'リポジトリ内の現在の状態: 確認できませんでした（権限やパスをご確認ください）';
         }
       });
+    });
+
+    Promise.all(checks).then(() => {
+      if (pendingUploadCtx !== ctx) return;
+      confirmOkBtn.disabled = false;
+      confirmOkBtn.textContent = originalOkLabel;
     });
   }
 
@@ -936,8 +960,21 @@
 
   confirmOkBtn.addEventListener('click', () => {
     const ctx = pendingUploadCtx;
+    if (!ctx) return;
+
+    if (ctx.riskyFiles && ctx.riskyFiles.length) {
+      const detail = ctx.riskyFiles.map((r) =>
+        '・' + r.targetPath + '： ' + Math.round(r.oldSize / 1024) + ' KB → ' + Math.round(r.newSize / 1024) + ' KB（' + Math.round(r.diffPercent) + '%差）'
+      ).join('\n');
+      const proceed = confirm(
+        '以下のファイルは、既存ファイルとサイズが10%以上異なります。\n\n' + detail +
+        '\n\n本当にこの内容で上書きしてよろしいですか？'
+      );
+      if (!proceed) return; // モーダルは開いたままにして、内容を見直せるようにする
+    }
+
     closeConfirmModal();
-    if (ctx) performUpload(ctx);
+    performUpload(ctx);
   });
 
   uploadBtn.addEventListener('click', () => {
