@@ -561,6 +561,24 @@
     return r.owner + '/' + r.repo;
   }
 
+  const LAST_USED_KEY = 'ghUploaderLastUsedRepo';
+
+  function loadLastUsedRepo() {
+    try {
+      return localStorage.getItem(LAST_USED_KEY) || '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function saveLastUsedRepo(repoValue) {
+    try {
+      localStorage.setItem(LAST_USED_KEY, repoValue);
+    } catch (e) {
+      // localStorage が使えない環境では記憶をあきらめる
+    }
+  }
+
   const repoSelect = document.getElementById('repoSelect');
   const appListEl = document.getElementById('appList');
   const toggleManageBtn = document.getElementById('toggleManageBtn');
@@ -572,7 +590,10 @@
   function renderAll() {
     const list = loadAppList();
     const counts = loadUsageCounts();
-    const previouslySelected = repoSelect.value;
+    // 初回表示（ページ読み込み直後）は前回使用したアプリを初期選択にする。
+    // 2回目以降の再描画（アプリの追加・削除、利用回数の更新など）では、
+    // 既にプルダウンで選ばれているものをそのまま維持する。
+    const previouslySelected = repoSelect.value || loadLastUsedRepo();
 
     // --- プルダウン（利用回数順） ---
     const sorted = list.slice().sort((a, b) => {
@@ -664,6 +685,7 @@
     const counts = loadUsageCounts();
     counts[repoValue] = (counts[repoValue] || 0) + 1;
     saveUsageCounts(counts);
+    saveLastUsedRepo(repoValue);
     renderAll();
   }
 
