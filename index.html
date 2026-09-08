@@ -381,6 +381,9 @@
   <button id="uploadBtn" disabled>GitHub にアップロード</button>
 
   <div class="status" id="status"></div>
+  <div class="status" id="deployStatus"></div>
+
+  <button type="button" class="link-btn" id="notifyToggleBtn">🔔 反映時に通知を受け取る（任意）</button>
 
   <div class="footer-note">
     このページはGitHub Pagesで公開されていますが、ページ自体にトークンは埋め込まれていません。入力したトークンはこの端末のブラウザ内（localStorage）にのみ保存され、GitHub API以外には送信されません。共有端末で使う場合は、使い終わったら上の「保存したトークンを削除」を押すか、GitHub側でトークンを失効させることをおすすめします。
@@ -791,6 +794,109 @@
     statusEl.innerHTML = msg;
   }
 
+  const deployStatusEl = document.getElementById('deployStatus');
+  function showDeployStatus(type, msg) {
+    deployStatusEl.className = 'status show ' + type;
+    deployStatusEl.innerHTML = msg;
+  }
+
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  // --- 通知の有効化 ---
+  const notifyToggleBtn = document.getElementById('notifyToggleBtn');
+
+  function updateNotifyBtnLabel() {
+    if (typeof Notification === 'undefined') {
+      notifyToggleBtn.textContent = '🔔 このブラウザは通知に対応していません';
+      notifyToggleBtn.disabled = true;
+    } else if (Notification.permission === 'granted') {
+      notifyToggleBtn.textContent = '🔔 通知が有効です';
+    } else if (Notification.permission === 'denied') {
+      notifyToggleBtn.textContent = '🔔 通知がブロックされています（ブラウザ設定から許可してください）';
+    } else {
+      notifyToggleBtn.textContent = '🔔 反映時に通知を受け取る（任意）';
+    }
+  }
+  updateNotifyBtnLabel();
+
+  notifyToggleBtn.addEventListener('click', async () => {
+    if (typeof Notification === 'undefined') return;
+    try {
+      await Notification.requestPermission();
+    } catch (e) { /* noop */ }
+    updateNotifyBtnLabel();
+  });
+
+  function notifyUser(title, body) {
+    try {
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        new Notification(title, { body: body, icon: 'icon-192.png' });
+      }
+    } catch (e) { /* noop */ }
+  }
+
+  // --- GitHub Pages への反映確認 ---
+  async function waitForPagesDeployment(ctx, startTimeMs, appLabel) {
+    const headers = {
+      'Authorization': 'Bearer ' + ctx.token,
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    };
+
+    let pagesInfo;
+    try {
+      const res = await fetch('https://api.github.com/repos/' + ctx.repo + '/pages', { headers });
+      if (res.status === 404) {
+        showDeployStatus('info', 'このリポジトリはGitHub Pagesが有効になっていないため、反映確認はスキップします。');
+        return;
+      }
+      if (res.status === 403) {
+        showDeployStatus('info', '反映確認をスキップしました（トークンに「Pages」の読み取り権限がありません）。');
+        return;
+      }
+      if (!res.ok) {
+        showDeployStatus('info', 'GitHub Pagesの情報取得に失敗したため、反映確認はスキップします（' + res.status + '）。');
+        return;
+      }
+      pagesInfo = await res.json();
+    } catch (e) {
+      showDeployStatus('info', 'GitHub Pagesの情報取得中にエラーが発生したため、反映確認はスキップします。');
+      return;
+    }
+
+    showDeployStatus('info', 'ページへの反映を確認中…（最大2分ほどかかる場合があります）');
+
+    const maxAttempts = 24; // 5秒 × 24回 ≒ 2分
+    for (let i = 0; i < maxAttempts; i++) {
+      await sleep(5000);
+      try {
+        const bRes = await fetch('https://api.github.com/repos/' + ctx.repo + '/pages/builds/latest', { headers });
+        if (bRes.ok) {
+          const build = await bRes.json();
+          const updated = new Date(build.updated_at || build.created_at).getTime();
+          if (updated >= startTimeMs) {
+            if (build.status === 'built') {
+              const url = pagesInfo.html_url;
+              showDeployStatus('success', '✔ 「' + appLabel + '」の更新がページに反映されました。' + (url ? '<br><a href="' + url + '" target="_blank" rel="noopener">サイトを開く</a>' : ''));
+              notifyUser('反映完了', '「' + appLabel + '」の更新がサイトに反映されました。');
+              return;
+            } else if (build.status === 'errored') {
+              showDeployStatus('error', '✖ 「' + appLabel + '」のページビルドに失敗しました。GitHub側の状況をご確認ください。');
+              notifyUser('反映失敗', '「' + appLabel + '」のページビルドに失敗しました。');
+              return;
+            }
+            // "building" などの場合はそのまま次のポーリングへ
+          }
+        }
+      } catch (e) {
+        // 一時的なエラーは無視して次のポーリングへ
+      }
+    }
+    showDeployStatus('info', '反映確認がタイムアウトしました。時間をおいて手動でページをご確認ください。');
+  }
+
   function arrayBufferToBase64(buffer) {
     let binary = '';
     const bytes = new Uint8Array(buffer);
@@ -1055,6 +1161,9 @@
 
     uploadBtn.disabled = true;
     const results = [];
+    const uploadStartTime = Date.now();
+    deployStatusEl.className = 'status';
+    deployStatusEl.innerHTML = '';
 
     for (let i = 0; i < targets.length; i++) {
       const { file, targetPath } = targets[i];
@@ -1120,6 +1229,13 @@
     }
 
     uploadBtn.disabled = false;
+
+    if (okResults.length) {
+      const appList = loadAppList();
+      const matched = appList.find((r) => repoKey(r) === repo);
+      const appLabel = matched ? matched.label : repo;
+      waitForPagesDeployment(ctx, uploadStartTime, appLabel);
+    }
   }
 </script>
 </body>
