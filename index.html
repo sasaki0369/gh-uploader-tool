@@ -941,7 +941,19 @@
       });
       if (res.status === 200) {
         const data = await res.json();
-        return { exists: true, size: data.size, htmlUrl: data.html_url };
+        let text = null;
+        try {
+          // GitHub Contents API は1MB未満のテキストファイルなら base64 で本文を返す
+          if (data.content && data.encoding === 'base64') {
+            const binary = atob(data.content.replace(/\n/g, ''));
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            text = new TextDecoder('utf-8').decode(bytes);
+          }
+        } catch (e) {
+          text = null; // デコードに失敗した場合は中身の比較をスキップする
+        }
+        return { exists: true, size: data.size, htmlUrl: data.html_url, text: text };
       } else if (res.status === 404) {
         return { exists: false };
       } else {
@@ -950,6 +962,15 @@
     } catch (e) {
       return { exists: null };
     }
+  }
+
+  // <title>タグの中身を取り出す（見つからなければ null）
+  function extractTitle(text) {
+    if (!text) return null;
+    const m = text.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    if (!m) return null;
+    const title = m[1].replace(/\s+/g, ' ').trim();
+    return title || null;
   }
 
   function dirNameOf(path) {
@@ -1045,15 +1066,16 @@
     });
 
     // リポジトリ内に既に同じパスのファイルがあるか確認し、上書き対象か新規作成かをその場で表示する
-    // サイズ確認が終わるまでアップロードボタンを一時的に無効化する
+    // サイズ・中身（<title>など）の確認が終わるまでアップロードボタンを一時的に無効化する
     ctx.riskyFiles = [];
+    ctx.riskyContent = [];
     confirmOkBtn.disabled = true;
     const originalOkLabel = confirmOkBtn.textContent;
-    confirmOkBtn.textContent = 'サイズを確認中…';
+    confirmOkBtn.textContent = '内容を確認中…';
 
     const checks = ctx.targets.map(({ file, targetPath }) => {
       const rowEl = rowEls.find((r) => r.targetPath === targetPath);
-      return fetchExistingFileInfo(ctx, targetPath).then((info) => {
+      return fetchExistingFileInfo(ctx, targetPath).then(async (info) => {
         if (pendingUploadCtx !== ctx) return; // モーダルが既に閉じられている場合は反映しない
         if (info.exists === true) {
           const oldSize = info.size || 0;
@@ -1068,6 +1090,26 @@
             statusHtml += '<br><span style="color:var(--error); font-weight:600;">⚠ サイズが元のファイルと ' + Math.round(diffPercent) + '% 異なります（' + Math.round(oldSize / 1024) + ' KB → ' + Math.round(newSize / 1024) + ' KB）</span>';
             ctx.riskyFiles.push({ targetPath, oldSize, newSize, diffPercent });
           }
+
+          // 中身の比較（今のところ <title> タグを見て、まったく別のアプリのファイルを
+          // 上書きしようとしていないかをチェックする）
+          try {
+            const existingTitle = extractTitle(info.text);
+            let newTitle = null;
+            if (/\.html?$/i.test(targetPath)) {
+              const newText = await file.text();
+              newTitle = extractTitle(newText);
+            }
+            if (existingTitle && newTitle && existingTitle !== newTitle) {
+              statusHtml += '<br><span style="color:var(--error); font-weight:600;">⚠ &lt;title&gt;が既存ファイルと異なります（現在: 「' + existingTitle + '」 → アップロード後: 「' + newTitle + '」）</span>';
+              ctx.riskyContent.push({ targetPath, existingTitle, newTitle });
+            } else if (existingTitle && !newTitle) {
+              statusHtml += '<br><span style="color:var(--text-dim);">（アップロードするファイルから&lt;title&gt;を読み取れなかったため、中身の比較はスキップしました）</span>';
+            }
+          } catch (e) {
+            // 中身の比較でエラーが起きてもアップロード自体は継続できるようにする
+          }
+
           if (rowEl) rowEl.existing.innerHTML = statusHtml;
         } else if (info.exists === false) {
           if (rowEl) rowEl.existing.innerHTML = 'リポジトリ内の現在の状態: <span style="color:var(--success);">新規作成されます（同名ファイルはまだありません）</span>';
@@ -1101,6 +1143,17 @@
   confirmOkBtn.addEventListener('click', () => {
     const ctx = pendingUploadCtx;
     if (!ctx) return;
+
+    if (ctx.riskyContent && ctx.riskyContent.length) {
+      const detail = ctx.riskyContent.map((r) =>
+        '・' + r.targetPath + '： 現在「' + r.existingTitle + '」 → アップロード後「' + r.newTitle + '」'
+      ).join('\n');
+      const proceed = confirm(
+        '以下のファイルは、<title>タグの内容が既存ファイルと異なります。別のアプリのファイルを間違って選んでいないかご確認ください。\n\n' + detail +
+        '\n\n本当にこの内容で上書きしてよろしいですか？'
+      );
+      if (!proceed) return; // モーダルは開いたままにして、内容を見直せるようにする
+    }
 
     if (ctx.riskyFiles && ctx.riskyFiles.length) {
       const detail = ctx.riskyFiles.map((r) =>
