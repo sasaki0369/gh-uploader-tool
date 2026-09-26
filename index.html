@@ -370,10 +370,7 @@
 
     <label for="newAppRepo">リポジトリ（owner/repo または GitHub の URL）</label>
     <input type="text" id="newAppRepo" placeholder="sasaki0369/my-app">
-
-    <label for="newAppAccount">紐づけるGitHubアカウント</label>
-    <select id="newAppAccount"></select>
-    <div class="hint">このアプリを選択すると、自動でここで選んだアカウントに切り替わります。</div>
+    <div class="hint">リポジトリの owner（例: sasaki0369）から、対応するGitHubアカウントが自動的に判別されます。</div>
 
     <button type="button" class="add-app-btn" id="addAppBtn">アプリを追加</button>
   </div>
@@ -578,7 +575,6 @@
     }
 
     updateAccountStatus();
-    renderNewAppAccountOptions();
 
     // --- 管理パネルの一覧 ---
     accountListEl.innerHTML = '';
@@ -628,34 +624,6 @@
     const newAppRepoEl = document.getElementById('newAppRepo');
     if (newAppRepoEl) {
       newAppRepoEl.placeholder = account ? account.owner + '/my-app' : 'sasaki0369/my-app';
-    }
-  }
-
-  // 「アプリの追加」フォーム内の、アプリに紐づけるアカウントを選ぶプルダウン
-  function renderNewAppAccountOptions() {
-    const sel = document.getElementById('newAppAccount');
-    if (!sel) return;
-    const accounts = loadAccounts();
-    const previouslySelected = sel.value;
-    sel.innerHTML = '';
-    if (!accounts.length) {
-      const opt = document.createElement('option');
-      opt.value = '';
-      opt.textContent = '（アカウント未登録）';
-      sel.appendChild(opt);
-      return;
-    }
-    accounts.forEach((a) => {
-      const opt = document.createElement('option');
-      opt.value = a.id;
-      opt.textContent = a.label + '（' + a.owner + '）';
-      sel.appendChild(opt);
-    });
-    const currentAccount = getSelectedAccount();
-    if (previouslySelected && accounts.some((a) => a.id === previouslySelected)) {
-      sel.value = previouslySelected;
-    } else if (currentAccount) {
-      sel.value = currentAccount.id;
     }
   }
 
@@ -836,7 +804,7 @@
     }
   }
 
-  function addApp(name, repoRaw, accountId) {
+  function addApp(name, repoRaw) {
     const parsed = parseRepoInput(repoRaw);
     if (!parsed) {
       showStatus('error', 'リポジトリは "owner/repo" またはGitHubのURL形式で入力してください。');
@@ -852,29 +820,22 @@
       showStatus('error', 'そのリポジトリは既に登録されています。');
       return false;
     }
-    const accounts = loadAccounts();
-    const chosenAccount = accountId ? accounts.find((a) => a.id === accountId) : null;
-    list.push({ owner: parsed.owner, repo: parsed.repo, label: name, accountId: chosenAccount ? chosenAccount.id : undefined });
+    list.push({ owner: parsed.owner, repo: parsed.repo, label: name });
     saveAppList(list);
     renderAll();
-    if (chosenAccount && chosenAccount.owner !== parsed.owner) {
-      showStatus('info', '「' + name + '」を追加しました。ただし紐づけたアカウント「' + chosenAccount.label + '」のowner（' + chosenAccount.owner + '）とリポジトリのownerが異なるため、選択時に正しく切り替わらない可能性があります。');
+    const matchedAccount = findAccountForApp({ owner: parsed.owner });
+    if (!matchedAccount) {
+      showStatus('info', '「' + name + '」を追加しました。ただしowner「' + parsed.owner + '」に対応するGitHubアカウントがまだ登録されていないため、このアプリを選択してもアカウントは自動で切り替わりません。先にそのownerのアカウントを追加しておいてください。');
     } else {
-      showStatus('success', '「' + name + '」を追加しました。');
+      showStatus('success', '「' + name + '」を追加しました。選択すると自動的に「' + matchedAccount.label + '」アカウントに切り替わります。');
     }
     return true;
   }
 
-  // アプリに紐づくアカウントを取得する。
-  // accountId が保存されていればそれを優先し、無い場合（従来登録されたアプリ）は
-  // owner が一致するアカウントを探すことで後方互換性を保つ。
+  // アプリのリポジトリ owner から、対応するGitHubアカウントを自動的に判別する
   function findAccountForApp(app) {
     if (!app) return null;
     const accounts = loadAccounts();
-    if (app.accountId) {
-      const byId = accounts.find((a) => a.id === app.accountId);
-      if (byId) return byId;
-    }
     return accounts.find((a) => a.owner === app.owner) || null;
   }
 
@@ -904,9 +865,7 @@
   });
 
   addAppBtn.addEventListener('click', () => {
-    const newAppAccountSelect = document.getElementById('newAppAccount');
-    const accountId = newAppAccountSelect ? newAppAccountSelect.value : '';
-    const ok = addApp(newAppNameInput.value.trim(), newAppRepoInput.value.trim(), accountId);
+    const ok = addApp(newAppNameInput.value.trim(), newAppRepoInput.value.trim());
     if (ok) {
       newAppNameInput.value = '';
       newAppRepoInput.value = '';
