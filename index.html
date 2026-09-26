@@ -329,17 +329,26 @@
   <h1>GitHub 自動アップローダー</h1>
   <p class="subtitle">ファイルを選んでリポジトリ情報を入力し、ボタン一つでコミット＆プッシュします。すべてこのページ内（ブラウザ）で完結し、外部サーバーは経由しません。</p>
 
-  <label for="token">Personal Access Token</label>
-  <div class="row" style="align-items: flex-start;">
-    <div style="flex: 1;">
-      <input type="password" id="token" name="gh_pat_no_autofill" placeholder="github_pat_xxxxxxxxxxxxxxxxxxxx" autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true">
-    </div>
-    <div style="flex: 0 0 auto;">
-      <button type="button" id="saveTokenBtn" style="margin-top:0; width:auto; padding:10px 16px;">保存</button>
-    </div>
+  <label for="accountSelect">GitHubアカウント</label>
+  <select id="accountSelect"></select>
+  <div class="hint" id="accountStatus"></div>
+
+  <button type="button" class="link-btn" id="toggleAccountManageBtn">＋ アカウントの追加・削除</button>
+  <div class="manage-panel" id="accountManagePanel" style="display:none;">
+    <div class="app-list" id="accountList"></div>
+
+    <label for="newAccountName">アカウント名（わかりやすい名前）</label>
+    <input type="text" id="newAccountName" placeholder="例：個人アカウント">
+
+    <label for="newAccountOwner">GitHubのユーザー名・組織名（owner）</label>
+    <input type="text" id="newAccountOwner" placeholder="sasaki0369">
+
+    <label for="newAccountToken">Personal Access Token</label>
+    <input type="password" id="newAccountToken" name="gh_pat_no_autofill_new" placeholder="github_pat_xxxxxxxxxxxxxxxxxxxx" autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true">
+
+    <button type="button" class="add-app-btn" id="addAccountBtn">アカウントを追加</button>
   </div>
-  <div class="hint" id="tokenSaveStatus">保存されているトークンはありません。</div>
-  <div class="hint">GitHub → Settings → Developer settings → Fine-grained tokens で発行（対象リポジトリの Contents: Read and write 権限）。「保存」を押すとこのブラウザにのみ保存され、次回以降は自動で読み込まれます。アップロード時は常に保存済みのトークンが使われるため、別のトークンに切り替える場合は入力後に必ず「保存」を押してください。<a href="#" id="clearTokenLink">保存したトークンを削除</a></div>
+  <div class="hint">GitHub → Settings → Developer settings → Fine-grained tokens で発行（対象リポジトリの Contents: Read and write 権限）。トークンはこのブラウザにのみ保存され、外部には送信されません。</div>
 
   <div class="row">
     <div>
@@ -471,77 +480,204 @@
     return { owner: m[1], repo: m[2] };
   }
 
-  const TOKEN_KEY = 'ghUploaderToken';
-  const tokenInput = document.getElementById('token');
-  const clearTokenLink = document.getElementById('clearTokenLink');
-  const saveTokenBtn = document.getElementById('saveTokenBtn');
-  const tokenSaveStatus = document.getElementById('tokenSaveStatus');
+  // --- GitHubアカウント（owner + トークン）の管理 ---
+  const ACCOUNTS_KEY = 'ghUploaderAccounts';
+  const SELECTED_ACCOUNT_KEY = 'ghUploaderSelectedAccountId';
+  const OLD_TOKEN_KEY = 'ghUploaderToken'; // 旧バージョンからの移行用
+
+  const accountSelect = document.getElementById('accountSelect');
+  const accountStatus = document.getElementById('accountStatus');
+  const accountListEl = document.getElementById('accountList');
+  const toggleAccountManageBtn = document.getElementById('toggleAccountManageBtn');
+  const accountManagePanel = document.getElementById('accountManagePanel');
+  const newAccountNameInput = document.getElementById('newAccountName');
+  const newAccountOwnerInput = document.getElementById('newAccountOwner');
+  const newAccountTokenInput = document.getElementById('newAccountToken');
+  const addAccountBtn = document.getElementById('addAccountBtn');
 
   function maskToken(value) {
-    if (value.length <= 8) return '••••';
+    if (!value || value.length <= 8) return '••••';
     return value.slice(0, 4) + '…' + value.slice(-4);
   }
 
-  function updateTokenSaveStatus() {
-    let saved = null;
+  function loadAccounts() {
     try {
-      saved = localStorage.getItem(TOKEN_KEY);
+      const saved = JSON.parse(localStorage.getItem(ACCOUNTS_KEY));
+      if (Array.isArray(saved)) return saved;
+    } catch (e) { /* noop */ }
+    return [];
+  }
+
+  function saveAccounts(accounts) {
+    try {
+      localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
     } catch (e) {
-      tokenSaveStatus.textContent = 'このブラウザではトークンの保存機能が利用できません（localStorage無効）。';
-      tokenSaveStatus.style.color = 'var(--error)';
-      return;
-    }
-    if (saved) {
-      tokenSaveStatus.textContent = '✓ 保存済み（' + maskToken(saved) + '）';
-      tokenSaveStatus.style.color = 'var(--success)';
-    } else {
-      tokenSaveStatus.textContent = '保存されているトークンはありません。入力後「保存」を押してください。';
-      tokenSaveStatus.style.color = '';
+      showStatus('error', 'アカウント情報の保存に失敗しました。このブラウザでlocalStorageが無効になっている可能性があります。');
     }
   }
 
-  function loadSavedToken() {
+  function loadSelectedAccountId() {
     try {
-      const saved = localStorage.getItem(TOKEN_KEY);
-      if (saved) tokenInput.value = saved;
+      return localStorage.getItem(SELECTED_ACCOUNT_KEY) || '';
     } catch (e) {
-      // localStorage が使えない環境では自動読込をあきらめる
+      return '';
     }
-    updateTokenSaveStatus();
   }
 
-  function saveToken(value) {
+  function saveSelectedAccountId(id) {
     try {
-      if (value) {
-        localStorage.setItem(TOKEN_KEY, value);
-      } else {
-        localStorage.removeItem(TOKEN_KEY);
+      localStorage.setItem(SELECTED_ACCOUNT_KEY, id);
+    } catch (e) { /* noop */ }
+  }
+
+  // 旧バージョン（アカウント機能が無い頃）に保存されていたトークンを、
+  // 初回アクセス時だけ「sasaki0369」アカウントとして自動的に引き継ぐ
+  (function migrateOldToken() {
+    try {
+      const oldToken = localStorage.getItem(OLD_TOKEN_KEY);
+      const accounts = loadAccounts();
+      if (oldToken && accounts.length === 0) {
+        const migrated = [{ id: 'account-' + Date.now(), label: 'sasaki0369', owner: 'sasaki0369', token: oldToken }];
+        saveAccounts(migrated);
+        saveSelectedAccountId(migrated[0].id);
       }
-    } catch (e) {
-      showStatus('error', 'トークンの保存に失敗しました。このブラウザでlocalStorageが無効になっている可能性があります。');
-      return;
-    }
-    updateTokenSaveStatus();
+      localStorage.removeItem(OLD_TOKEN_KEY);
+    } catch (e) { /* noop */ }
+  })();
+
+  function getSelectedAccount() {
+    const accounts = loadAccounts();
+    const id = accountSelect.value || loadSelectedAccountId();
+    return accounts.find((a) => a.id === id) || accounts[0] || null;
   }
 
-  loadSavedToken();
+  function renderAccounts() {
+    const accounts = loadAccounts();
+    const previouslySelected = accountSelect.value || loadSelectedAccountId();
 
-  saveTokenBtn.addEventListener('click', () => {
-    const value = tokenInput.value.trim();
-    if (!value) {
-      showStatus('error', '保存するトークンを入力してください。');
-      return;
+    accountSelect.innerHTML = '';
+    if (!accounts.length) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = '（アカウント未登録）';
+      accountSelect.appendChild(opt);
+    } else {
+      accounts.forEach((a) => {
+        const opt = document.createElement('option');
+        opt.value = a.id;
+        opt.textContent = a.label + '（' + a.owner + '）';
+        accountSelect.appendChild(opt);
+      });
+      if (previouslySelected && accounts.some((a) => a.id === previouslySelected)) {
+        accountSelect.value = previouslySelected;
+      }
     }
-    saveToken(value);
-    showStatus('success', 'トークンを保存しました。');
+
+    updateAccountStatus();
+
+    // --- 管理パネルの一覧 ---
+    accountListEl.innerHTML = '';
+    if (!accounts.length) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-list';
+      empty.textContent = '登録されているアカウントがありません。';
+      accountListEl.appendChild(empty);
+    } else {
+      accounts.forEach((a) => {
+        const row = document.createElement('div');
+        row.className = 'app-row';
+
+        const info = document.createElement('div');
+        info.className = 'app-info';
+        const name = document.createElement('div');
+        name.className = 'app-name';
+        name.textContent = a.label;
+        const detail = document.createElement('div');
+        detail.className = 'app-repo';
+        detail.textContent = 'owner: ' + a.owner + ' ・ トークン: ' + maskToken(a.token);
+        info.appendChild(name);
+        info.appendChild(detail);
+
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'app-delete';
+        delBtn.textContent = '削除';
+        delBtn.addEventListener('click', () => removeAccount(a.id));
+
+        row.appendChild(info);
+        row.appendChild(delBtn);
+        accountListEl.appendChild(row);
+      });
+    }
+  }
+
+  function updateAccountStatus() {
+    const account = getSelectedAccount();
+    if (!account) {
+      accountStatus.textContent = 'アカウントが登録されていません。下の「＋ アカウントの追加・削除」から追加してください。';
+      accountStatus.style.color = '';
+    } else {
+      accountStatus.innerHTML = '✓ <strong>' + account.label + '</strong>（owner: ' + account.owner + '） のトークンを使用します（' + maskToken(account.token) + '）';
+      accountStatus.style.color = 'var(--success)';
+    }
+    const newAppRepoEl = document.getElementById('newAppRepo');
+    if (newAppRepoEl) {
+      newAppRepoEl.placeholder = account ? account.owner + '/my-app' : 'sasaki0369/my-app';
+    }
+  }
+
+  function addAccount(label, owner, token) {
+    if (!label) { showStatus('error', 'アカウント名を入力してください。'); return false; }
+    if (!owner) { showStatus('error', 'GitHubのユーザー名・組織名（owner）を入力してください。'); return false; }
+    if (!token) { showStatus('error', 'Personal Access Token を入力してください。'); return false; }
+    const accounts = loadAccounts();
+    const id = 'account-' + Date.now();
+    accounts.push({ id, label, owner, token });
+    saveAccounts(accounts);
+    saveSelectedAccountId(id);
+    renderAccounts();
+    renderAll();
+    showStatus('success', 'アカウント「' + label + '」を追加しました。');
+    return true;
+  }
+
+  function removeAccount(id) {
+    const accounts = loadAccounts();
+    const target = accounts.find((a) => a.id === id);
+    if (!target) return;
+    if (!confirm('アカウント「' + target.label + '」を削除しますか？（GitHub側のトークン自体は失効しません）')) return;
+    const next = accounts.filter((a) => a.id !== id);
+    saveAccounts(next);
+    if (loadSelectedAccountId() === id) {
+      saveSelectedAccountId(next.length ? next[0].id : '');
+    }
+    renderAccounts();
+    renderAll();
+    showStatus('info', 'アカウント「' + target.label + '」を削除しました。');
+  }
+
+  accountSelect.addEventListener('change', () => {
+    saveSelectedAccountId(accountSelect.value);
+    updateAccountStatus();
+    renderAll();
   });
 
-  clearTokenLink.addEventListener('click', (e) => {
-    e.preventDefault();
-    tokenInput.value = '';
-    saveToken('');
-    showStatus('info', '保存したトークンを削除しました。');
+  toggleAccountManageBtn.addEventListener('click', () => {
+    const isHidden = accountManagePanel.style.display === 'none';
+    accountManagePanel.style.display = isHidden ? 'block' : 'none';
+    toggleAccountManageBtn.textContent = isHidden ? '－ アカウントの追加・削除を閉じる' : '＋ アカウントの追加・削除';
   });
+
+  addAccountBtn.addEventListener('click', () => {
+    const ok = addAccount(newAccountNameInput.value.trim(), newAccountOwnerInput.value.trim(), newAccountTokenInput.value.trim());
+    if (ok) {
+      newAccountNameInput.value = '';
+      newAccountOwnerInput.value = '';
+      newAccountTokenInput.value = '';
+    }
+  });
+
+  renderAccounts();
 
   const USAGE_KEY = 'ghUploaderUsageCounts';
 
@@ -594,26 +730,37 @@
   function renderAll() {
     const list = loadAppList();
     const counts = loadUsageCounts();
+    const account = getSelectedAccount();
     // 初回表示（ページ読み込み直後）は前回使用したアプリを初期選択にする。
     // 2回目以降の再描画（アプリの追加・削除、利用回数の更新など）では、
     // 既にプルダウンで選ばれているものをそのまま維持する。
     const previouslySelected = repoSelect.value || loadLastUsedRepo();
 
-    // --- プルダウン（利用回数順） ---
-    const sorted = list.slice().sort((a, b) => {
+    // --- プルダウン（利用回数順、選択中のアカウントのownerに絞り込み） ---
+    const filtered = account ? list.filter((r) => r.owner === account.owner) : list;
+    const sorted = filtered.slice().sort((a, b) => {
       const diff = (counts[repoKey(b)] || 0) - (counts[repoKey(a)] || 0);
       if (diff !== 0) return diff;
       return list.indexOf(a) - list.indexOf(b); // 利用回数が同じ場合は登録順を維持
     });
 
     repoSelect.innerHTML = '';
-    sorted.forEach((r) => {
+    if (!sorted.length) {
       const opt = document.createElement('option');
-      opt.value = repoKey(r);
-      opt.textContent = r.label;
+      opt.value = '';
+      opt.textContent = account ? '（' + account.owner + ' のアプリが未登録です）' : '（アカウント未選択）';
       repoSelect.appendChild(opt);
-    });
-    if (previouslySelected) repoSelect.value = previouslySelected;
+    } else {
+      sorted.forEach((r) => {
+        const opt = document.createElement('option');
+        opt.value = repoKey(r);
+        opt.textContent = r.label;
+        repoSelect.appendChild(opt);
+      });
+      if (previouslySelected && sorted.some((r) => repoKey(r) === previouslySelected)) {
+        repoSelect.value = previouslySelected;
+      }
+    }
 
     // --- 管理パネルの一覧（登録順） ---
     appListEl.innerHTML = '';
@@ -670,7 +817,12 @@
     list.push({ owner: parsed.owner, repo: parsed.repo, label: name });
     saveAppList(list);
     renderAll();
-    showStatus('success', '「' + name + '」を追加しました。');
+    const account = getSelectedAccount();
+    if (account && account.owner !== parsed.owner) {
+      showStatus('info', '「' + name + '」を追加しました。ただし選択中のアカウント（' + account.owner + '）とownerが異なるため、「' + parsed.owner + '」のアカウントに切り替えるまでプルダウンには表示されません。');
+    } else {
+      showStatus('success', '「' + name + '」を追加しました。');
+    }
     return true;
   }
 
@@ -1172,22 +1324,16 @@
   });
 
   uploadBtn.addEventListener('click', () => {
-    // ブラウザの自動入力で表示欄が上書きされることがあるため、
-    // 保存済みのトークンがあればそちらを優先して使う（表示欄はあくまで編集用）
-    let token = tokenInput.value.trim();
-    try {
-      const saved = localStorage.getItem(TOKEN_KEY);
-      if (saved) token = saved;
-    } catch (e) {
-      // localStorage が使えない場合は表示欄の値をそのまま使う
-    }
+    const account = getSelectedAccount();
+    const token = account ? account.token : '';
     const repo = repoSelect.value;
     const branch = document.getElementById('branch').value.trim() || 'main';
     const pathInput = document.getElementById('path').value.trim().replace(/^\/+/, '').replace(/\/+$/, '');
     let message = document.getElementById('message').value.trim();
 
-    if (!token) { showStatus('error', 'Personal Access Token を入力してください。'); return; }
-    if (!repo || !repo.includes('/')) { showStatus('error', 'リポジトリは "owner/repo" の形式で入力してください。'); return; }
+    if (!account) { showStatus('error', 'GitHubアカウントを選択（または追加）してください。'); return; }
+    if (!token) { showStatus('error', '選択中のアカウントにトークンが設定されていません。'); return; }
+    if (!repo || !repo.includes('/')) { showStatus('error', 'アプリ（リポジトリ）を選択してください。'); return; }
     if (selectedFiles.length === 0) { showStatus('error', 'アップロードするファイルを選択してください。'); return; }
     if (selectedFiles.length === 1 && !pathInput) { showStatus('error', '配置パスを入力してください。'); return; }
 
