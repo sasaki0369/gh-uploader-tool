@@ -371,6 +371,10 @@
     <label for="newAppRepo">リポジトリ（owner/repo または GitHub の URL）</label>
     <input type="text" id="newAppRepo" placeholder="sasaki0369/my-app">
 
+    <label for="newAppAccount">紐づけるGitHubアカウント</label>
+    <select id="newAppAccount"></select>
+    <div class="hint">このアプリを選択すると、自動でここで選んだアカウントに切り替わります。</div>
+
     <button type="button" class="add-app-btn" id="addAppBtn">アプリを追加</button>
   </div>
 
@@ -574,6 +578,7 @@
     }
 
     updateAccountStatus();
+    renderNewAppAccountOptions();
 
     // --- 管理パネルの一覧 ---
     accountListEl.innerHTML = '';
@@ -623,6 +628,34 @@
     const newAppRepoEl = document.getElementById('newAppRepo');
     if (newAppRepoEl) {
       newAppRepoEl.placeholder = account ? account.owner + '/my-app' : 'sasaki0369/my-app';
+    }
+  }
+
+  // 「アプリの追加」フォーム内の、アプリに紐づけるアカウントを選ぶプルダウン
+  function renderNewAppAccountOptions() {
+    const sel = document.getElementById('newAppAccount');
+    if (!sel) return;
+    const accounts = loadAccounts();
+    const previouslySelected = sel.value;
+    sel.innerHTML = '';
+    if (!accounts.length) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = '（アカウント未登録）';
+      sel.appendChild(opt);
+      return;
+    }
+    accounts.forEach((a) => {
+      const opt = document.createElement('option');
+      opt.value = a.id;
+      opt.textContent = a.label + '（' + a.owner + '）';
+      sel.appendChild(opt);
+    });
+    const currentAccount = getSelectedAccount();
+    if (previouslySelected && accounts.some((a) => a.id === previouslySelected)) {
+      sel.value = previouslySelected;
+    } else if (currentAccount) {
+      sel.value = currentAccount.id;
     }
   }
 
@@ -736,8 +769,13 @@
     // 既にプルダウンで選ばれているものをそのまま維持する。
     const previouslySelected = repoSelect.value || loadLastUsedRepo();
 
-    // --- プルダウン（利用回数順、選択中のアカウントのownerに絞り込み） ---
-    const filtered = account ? list.filter((r) => r.owner === account.owner) : list;
+    // --- プルダウン（利用回数順、選択中のアカウントに紐づくアプリのみに絞り込み） ---
+    const filtered = account
+      ? list.filter((r) => {
+          const linked = findAccountForApp(r);
+          return linked ? linked.id === account.id : r.owner === account.owner;
+        })
+      : list;
     const sorted = filtered.slice().sort((a, b) => {
       const diff = (counts[repoKey(b)] || 0) - (counts[repoKey(a)] || 0);
       if (diff !== 0) return diff;
@@ -798,7 +836,7 @@
     }
   }
 
-  function addApp(name, repoRaw) {
+  function addApp(name, repoRaw, accountId) {
     const parsed = parseRepoInput(repoRaw);
     if (!parsed) {
       showStatus('error', 'リポジトリは "owner/repo" またはGitHubのURL形式で入力してください。');
@@ -814,16 +852,30 @@
       showStatus('error', 'そのリポジトリは既に登録されています。');
       return false;
     }
-    list.push({ owner: parsed.owner, repo: parsed.repo, label: name });
+    const accounts = loadAccounts();
+    const chosenAccount = accountId ? accounts.find((a) => a.id === accountId) : null;
+    list.push({ owner: parsed.owner, repo: parsed.repo, label: name, accountId: chosenAccount ? chosenAccount.id : undefined });
     saveAppList(list);
     renderAll();
-    const account = getSelectedAccount();
-    if (account && account.owner !== parsed.owner) {
-      showStatus('info', '「' + name + '」を追加しました。ただし選択中のアカウント（' + account.owner + '）とownerが異なるため、「' + parsed.owner + '」のアカウントに切り替えるまでプルダウンには表示されません。');
+    if (chosenAccount && chosenAccount.owner !== parsed.owner) {
+      showStatus('info', '「' + name + '」を追加しました。ただし紐づけたアカウント「' + chosenAccount.label + '」のowner（' + chosenAccount.owner + '）とリポジトリのownerが異なるため、選択時に正しく切り替わらない可能性があります。');
     } else {
       showStatus('success', '「' + name + '」を追加しました。');
     }
     return true;
+  }
+
+  // アプリに紐づくアカウントを取得する。
+  // accountId が保存されていればそれを優先し、無い場合（従来登録されたアプリ）は
+  // owner が一致するアカウントを探すことで後方互換性を保つ。
+  function findAccountForApp(app) {
+    if (!app) return null;
+    const accounts = loadAccounts();
+    if (app.accountId) {
+      const byId = accounts.find((a) => a.id === app.accountId);
+      if (byId) return byId;
+    }
+    return accounts.find((a) => a.owner === app.owner) || null;
   }
 
   function removeApp(key) {
@@ -852,10 +904,26 @@
   });
 
   addAppBtn.addEventListener('click', () => {
-    const ok = addApp(newAppNameInput.value.trim(), newAppRepoInput.value.trim());
+    const newAppAccountSelect = document.getElementById('newAppAccount');
+    const accountId = newAppAccountSelect ? newAppAccountSelect.value : '';
+    const ok = addApp(newAppNameInput.value.trim(), newAppRepoInput.value.trim(), accountId);
     if (ok) {
       newAppNameInput.value = '';
       newAppRepoInput.value = '';
+    }
+  });
+
+  // アプリを選択したら、そのアプリに紐づくアカウントへ自動的に切り替える
+  repoSelect.addEventListener('change', () => {
+    const list = loadAppList();
+    const matched = list.find((r) => repoKey(r) === repoSelect.value);
+    if (!matched) return;
+    const linkedAccount = findAccountForApp(matched);
+    if (linkedAccount && accountSelect.value !== linkedAccount.id) {
+      accountSelect.value = linkedAccount.id;
+      saveSelectedAccountId(linkedAccount.id);
+      updateAccountStatus();
+      renderAll();
     }
   });
 
