@@ -989,12 +989,25 @@
     folderInput.value = '';
   });
 
-  // ブラウザが重複ダウンロード時に付ける "index (1).html" "index-1.html" のような
-  // 連番サフィックスを取り除き、本来のファイル名に正規化する
-  // 例: "index (1).html" → "index.html" / "index-1.html" → "index.html" / "clip-web (1).html" → "clip-web.html"
+  // ブラウザが重複ダウンロード時に付ける "index (1).html" "index-1.html" "index-35.html" のような
+  // 連番サフィックスを取り除き、本来のファイル名に正規化する（複数回重なっている場合も繰り返し取り除く）
+  // 例: "index (1).html" → "index.html" / "index-1.html" → "index.html" / "index-35.html" → "index.html"
+  //     "clip-web (1).html" → "clip-web.html" / "index-35 (2).html" → "index.html"
   function normalizeUploadFileName(name) {
-    const m = name.match(/^(.*?)(?:\s*\(\d+\)|-\d+)(\.[^./\\]+)$/);
-    return m ? (m[1] + m[2]) : name;
+    const extMatch = name.match(/(\.[^./\\]+)$/);
+    if (!extMatch) return name;
+    const ext = extMatch[1];
+    let base = name.slice(0, name.length - ext.length);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      const m = base.match(/^(.*?)(?:\s*\(\d+\)|-\d+)$/);
+      if (m) {
+        base = m[1];
+        changed = true;
+      }
+    }
+    return base + ext;
   }
 
   // ファイルの配置パスの初期値を決める。
