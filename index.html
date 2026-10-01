@@ -150,6 +150,8 @@
     color: var(--text-dim);
     margin-top: 4px;
   }
+  .hint.success { color: var(--success); }
+  .hint.error { color: var(--error); }
   a { color: var(--accent); }
   .link-btn {
     width: auto;
@@ -242,6 +244,18 @@
     flex: 1;
     margin: 0;
   }
+  .path-row-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .path-row-meta {
+    font-size: 11px;
+    color: var(--text-dim);
+    padding-left: calc(38% + 8px);
+  }
+  .path-row-meta.success { color: var(--success); }
+  .path-row-meta.error { color: var(--error); }
   .modal-overlay {
     display: none;
     position: fixed;
@@ -401,7 +415,8 @@
   <label for="path" id="pathLabel">リポジトリ内の配置パス</label>
   <input type="text" id="path" placeholder="index.html" value="index.html">
   <div class="hint" id="pathHint">このパスがそのままファイル名として使われます。パス欄を自分で編集していない場合は、選んだファイルの名前が自動で入ります。</div>
-  <div class="hint" id="multiPathHint" style="display:none;">ファイルごとに配置パスを個別に指定できます（例: <code>gas/Code.js</code>）。フォルダを選択した場合は、サブフォルダ構成がそのまま反映されます。</div>
+  <div class="hint" id="pathAutoHint" style="display:none;"></div>
+  <div class="hint" id="multiPathHint" style="display:none;">ファイルごとに配置パスを個別に指定できます（例: <code>gas/Code.js</code>）。フォルダを選択した場合はサブフォルダ構成が、単体のファイル名だけを選んだ場合はリポジトリ内の既存ファイルを検索して階層が自動的に反映されます。</div>
   <div id="multiPathList" style="display:none;"></div>
 
   <label for="message">コミットメッセージ（任意）</label>
@@ -903,13 +918,20 @@
   repoSelect.addEventListener('change', () => {
     const list = loadAppList();
     const matched = list.find((r) => repoKey(r) === repoSelect.value);
-    if (!matched) return;
-    const linkedAccount = findAccountForApp(matched);
-    if (linkedAccount && accountSelect.value !== linkedAccount.id) {
-      accountSelect.value = linkedAccount.id;
-      saveSelectedAccountId(linkedAccount.id);
-      updateAccountStatus();
-      renderAll();
+    if (matched) {
+      const linkedAccount = findAccountForApp(matched);
+      if (linkedAccount && accountSelect.value !== linkedAccount.id) {
+        accountSelect.value = linkedAccount.id;
+        saveSelectedAccountId(linkedAccount.id);
+        updateAccountStatus();
+        renderAll();
+      }
+    }
+    // 既にファイルが選択済みの状態でアプリ（リポジトリ）を切り替えた場合は、
+    // 新しいリポジトリに対して既存ファイルの階層を再度自動判別する
+    if (typeof selectedFiles !== 'undefined' && selectedFiles.length) {
+      filesVersion += 1;
+      autoDetectExistingPaths(filesVersion);
     }
   });
 
@@ -992,8 +1014,19 @@
     return normalizeUploadFileName(file.name);
   }
 
+  // 複数ファイル選択時、ユーザーがそのファイルの配置パスを自分で編集したかどうか
+  let multiFilePathsTouched = [];
+  // ファイル選択のたびに増やすバージョン番号。
+  // 階層の自動判別（非同期）が終わる前に次のファイル選択が行われた場合に、
+  // 古い判別結果で上書きしてしまわないようにするためのガード。
+  let filesVersion = 0;
+  const multiRowMetaEls = [];
+
   function handleFiles(fileList) {
     selectedFiles = Array.from(fileList);
+    filesVersion += 1;
+    const myVersion = filesVersion;
+
     if (selectedFiles.length === 1) {
       const f = selectedFiles[0];
       const normalized = normalizeUploadFileName(f.name);
@@ -1003,16 +1036,22 @@
       const names = selectedFiles.map((f) => f.webkitRelativePath || f.name).join(', ');
       fileNameEl.textContent = selectedFiles.length + '個のファイルを選択（計 ' + totalKb + ' KB）：' + names;
       multiFilePaths = selectedFiles.map((f) => defaultTargetPathFor(f));
+      multiFilePathsTouched = selectedFiles.map(() => false);
     }
     updatePathUiForFileCount();
     updateUploadState();
+    autoDetectExistingPaths(myVersion);
   }
 
   // 複数ファイル選択時、ファイルごとに配置パスを編集できる一覧を描画する
   function buildMultiPathList() {
     const container = document.getElementById('multiPathList');
     container.innerHTML = '';
+    multiRowMetaEls.length = 0;
     selectedFiles.forEach((file, idx) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'path-row-wrap';
+
       const row = document.createElement('div');
       row.className = 'path-row';
 
@@ -1024,11 +1063,138 @@
       const input = document.createElement('input');
       input.type = 'text';
       input.value = multiFilePaths[idx] || '';
-      input.addEventListener('input', () => { multiFilePaths[idx] = input.value; });
+      input.addEventListener('input', () => {
+        multiFilePaths[idx] = input.value;
+        multiFilePathsTouched[idx] = true;
+      });
 
       row.appendChild(label);
       row.appendChild(input);
-      container.appendChild(row);
+
+      const meta = document.createElement('div');
+      meta.className = 'path-row-meta';
+      meta.textContent = file.webkitRelativePath ? '' : '既存ファイルの階層を確認中…';
+
+      wrap.appendChild(row);
+      wrap.appendChild(meta);
+      container.appendChild(wrap);
+      multiRowMetaEls[idx] = { input, meta };
+    });
+  }
+
+  // --- リポジトリ内の既存ファイルから、同名ファイルの配置パスを自動判別する ---
+  // （スマホ利用時など、フォルダ単位での選択ができない場合でも、
+  //   ファイル名だけでリポジトリ内の既存階層を探して自動入力するための仕組み）
+  let repoTreeCache = { key: '', promise: null };
+
+  function getActiveRepoContext() {
+    const repo = repoSelect.value;
+    if (!repo || !repo.includes('/')) return null;
+    const account = getSelectedAccount();
+    if (!account || !account.token) return null;
+    const branch = document.getElementById('branch').value.trim() || 'main';
+    return { repo: repo, branch: branch, token: account.token };
+  }
+
+  // リポジトリ内の全ファイルパス一覧（git tree, recursive）を取得する。
+  // 同じ repo/branch への問い合わせはキャッシュして使い回す。
+  function fetchRepoTree(ctx) {
+    const key = ctx.repo + '@' + ctx.branch;
+    if (repoTreeCache.key === key && repoTreeCache.promise) {
+      return repoTreeCache.promise;
+    }
+    const promise = fetch('https://api.github.com/repos/' + ctx.repo + '/git/trees/' + encodeURIComponent(ctx.branch) + '?recursive=1', {
+      headers: {
+        'Authorization': 'Bearer ' + ctx.token,
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28'
+      }
+    }).then((res) => {
+      if (!res.ok) return null;
+      return res.json();
+    }).then((data) => {
+      if (!data || !Array.isArray(data.tree)) return null;
+      return data.tree.filter((item) => item.type === 'blob').map((item) => item.path);
+    }).catch(() => null);
+    repoTreeCache = { key: key, promise: promise };
+    return promise;
+  }
+
+  function findMatchingPaths(allPaths, fileName) {
+    if (!allPaths) return [];
+    return allPaths.filter((p) => {
+      const base = p.split('/').pop();
+      return base === fileName;
+    });
+  }
+
+  async function autoDetectExistingPaths(myVersion) {
+    // webkitRelativePath を持つファイル（フォルダ選択経由）は、
+    // 既にサブフォルダ構成が分かっているので自動判別の対象外とする
+    const targets = selectedFiles
+      .map((f, idx) => ({ f, idx }))
+      .filter(({ f }) => !f.webkitRelativePath);
+    if (!targets.length) return;
+
+    const ctx = getActiveRepoContext();
+    if (!ctx) return; // アプリ（リポジトリ）やトークンが未確定の場合は何もしない
+
+    if (selectedFiles.length === 1) {
+      const pathAutoHint = document.getElementById('pathAutoHint');
+      pathAutoHint.style.display = 'block';
+      pathAutoHint.className = 'hint';
+      pathAutoHint.textContent = '既存ファイルの階層を確認中…';
+    }
+
+    const allPaths = await fetchRepoTree(ctx);
+    if (myVersion !== filesVersion) return; // 確認中に別のファイルが選び直された場合は結果を破棄
+
+    if (!allPaths) {
+      if (selectedFiles.length === 1) {
+        const pathAutoHint = document.getElementById('pathAutoHint');
+        pathAutoHint.style.display = 'none';
+      }
+      return;
+    }
+
+    targets.forEach(({ f, idx }) => {
+      const fileName = normalizeUploadFileName(f.name);
+      const matches = findMatchingPaths(allPaths, fileName);
+
+      if (selectedFiles.length === 1) {
+        const pathInputEl = document.getElementById('path');
+        const pathAutoHint = document.getElementById('pathAutoHint');
+        if (matches.length === 1) {
+          if (!pathTouchedByUser) {
+            pathInputEl.value = matches[0];
+          }
+          pathAutoHint.className = 'hint success';
+          pathAutoHint.textContent = '✓ リポジトリ内の既存ファイル「' + matches[0] + '」を検出し、配置パスに自動入力しました。';
+        } else if (matches.length > 1) {
+          pathAutoHint.className = 'hint error';
+          pathAutoHint.textContent = '⚠ 同名のファイルが複数の場所に見つかりました（' + matches.join(' / ') + '）。配置パスを手動で確認・選択してください。';
+        } else {
+          pathAutoHint.className = 'hint';
+          pathAutoHint.textContent = 'リポジトリ内に同名の既存ファイルは見つかりませんでした（新規作成されます）。';
+        }
+      } else {
+        const rowEls = multiRowMetaEls[idx];
+        if (!rowEls) return;
+        if (matches.length === 1) {
+          if (!multiFilePathsTouched[idx]) {
+            multiFilePaths[idx] = matches[0];
+            rowEls.input.value = matches[0];
+          }
+          rowEls.meta.className = 'path-row-meta success';
+          rowEls.meta.textContent = '✓ 既存ファイル「' + matches[0] + '」を検出し自動入力しました';
+        } else if (matches.length > 1) {
+          rowEls.meta.className = 'path-row-meta error';
+          rowEls.meta.textContent = '⚠ 同名ファイルが複数見つかりました（' + matches.join(' / ') + '）。手動で確認してください';
+        } else {
+          rowEls.meta.className = 'path-row-meta';
+          rowEls.meta.textContent = '既存ファイルは見つかりませんでした（新規作成されます）';
+        }
+      }
     });
   }
 
@@ -1036,12 +1202,14 @@
     const pathInputEl = document.getElementById('path');
     const pathLabel = document.getElementById('pathLabel');
     const pathHint = document.getElementById('pathHint');
+    const pathAutoHint = document.getElementById('pathAutoHint');
     const multiPathHint = document.getElementById('multiPathHint');
     const multiPathList = document.getElementById('multiPathList');
     if (selectedFiles.length > 1) {
       pathInputEl.style.display = 'none';
       pathLabel.style.display = 'none';
       pathHint.style.display = 'none';
+      pathAutoHint.style.display = 'none';
       multiPathHint.style.display = 'block';
       multiPathList.style.display = 'flex';
       buildMultiPathList();
@@ -1051,6 +1219,8 @@
       pathHint.style.display = '';
       multiPathHint.style.display = 'none';
       multiPathList.style.display = 'none';
+      pathAutoHint.style.display = 'none';
+      pathAutoHint.textContent = '';
       // パス欄を自分で編集していない場合は、選んだファイルの名前をそのまま使う
       // （index.html固定にしてしまうと、別名のファイルまで index.html として上書きされてしまうため）
       if (!pathTouchedByUser && selectedFiles.length === 1) {
