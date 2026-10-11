@@ -359,6 +359,73 @@
     border-top: 1px solid var(--panel-border);
     padding-top: 14px;
   }
+  textarea {
+    width: 100%;
+    min-height: 180px;
+    background: var(--input-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 10px 12px;
+    font-size: 12.5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    outline: none;
+    resize: vertical;
+    transition: border-color 0.15s;
+  }
+  textarea:focus { border-color: var(--accent); }
+  .code-box {
+    background: var(--input-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--text);
+    max-height: 280px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin-top: 6px;
+  }
+  .section-divider {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid var(--panel-border);
+  }
+  .fb-history-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--input-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    font-size: 12.5px;
+    margin-bottom: 6px;
+  }
+  .fb-history-row .fb-history-info { overflow: hidden; }
+  .fb-history-row .fb-history-date { color: var(--text); font-weight: 500; }
+  .fb-history-row .fb-history-note {
+    color: var(--text-dim);
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .fb-rollback-btn {
+    flex-shrink: 0;
+    width: auto;
+    margin-top: 0;
+    background: rgba(91, 141, 239, 0.14);
+    color: var(--accent);
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+  }
+  .fb-rollback-btn:hover:not(:disabled) { background: rgba(91, 141, 239, 0.26); }
 </style>
 </head>
 <body>
@@ -416,7 +483,7 @@
   <input type="text" id="path" placeholder="index.html" value="index.html">
   <div class="hint" id="pathHint">このパスがそのままファイル名として使われます。パス欄を自分で編集していない場合は、選んだファイルの名前が自動で入ります。</div>
   <div class="hint" id="pathAutoHint" style="display:none;"></div>
-  <div class="hint" id="multiPathHint" style="display:none;">ファイルごとに配置パスを個別に指定できます（例: <code>gas/Code.js</code>）。フォルダを選択した場合はサブフォルダ構成が、単体のファイル名だけを選んだ場合はリポジトリ内の既存ファイルを検索して階層が自動的に反映されます。</div>
+  <div class="hint" id="multiPathHint" style="display:none;">ファイルごとに配置パスを個別に指定できます（例: <code>gas/Code.js</code>）。リポジトリ内の既存ファイルを検索し、同名ファイルがあれば階層が自動的に反映されます。</div>
   <div id="multiPathList" style="display:none;"></div>
 
   <label for="message">コミットメッセージ（任意）</label>
@@ -428,8 +495,6 @@
     <div class="fname" id="fileName"></div>
   </div>
   <input type="file" id="fileInput" multiple>
-  <button type="button" class="link-btn" id="pickFolderBtn">📁 フォルダを選択してアップロード（サブフォルダ構成を保持）</button>
-  <input type="file" id="folderInput" webkitdirectory multiple style="display:none;">
 
   <button id="uploadBtn" disabled>GitHub にアップロード</button>
 
@@ -440,6 +505,79 @@
 
   <div class="footer-note">
     このページはGitHub Pagesで公開されていますが、ページ自体にトークンは埋め込まれていません。入力したトークンはこの端末のブラウザ内（localStorage）にのみ保存され、GitHub API以外には送信されません。共有端末で使う場合は、使い終わったら上の「保存したトークンを削除」を押すか、GitHub側でトークンを失効させることをおすすめします。
+  </div>
+</div>
+
+<div class="card" id="firebaseCard">
+  <h1>🔥 Firebase ルール管理</h1>
+  <p class="subtitle">登録した Firebase プロジェクトの Realtime Database セキュリティルールを、安全に確認・更新できます。更新前の自動バックアップ・静的な危険チェック・更新後の照合・履歴からのロールバックに対応しています。実際の更新処理は Cloud Functions 側（管理者メールで保護）で行われるため、このページに秘密鍵を置くことはありません。</p>
+
+  <button type="button" class="link-btn" id="toggleFirebasePanelBtn">＋ Firebaseルール管理を開く</button>
+
+  <div id="firebasePanelBody" style="display:none;">
+    <label for="fbProjectSelect">Firebaseプロジェクト</label>
+    <select id="fbProjectSelect"></select>
+    <div class="hint" id="fbProjectHint"></div>
+
+    <button type="button" class="link-btn" id="toggleFbManageBtn">＋ プロジェクトの追加・削除</button>
+    <div class="manage-panel" id="fbManagePanel" style="display:none;">
+      <div class="app-list" id="fbProjectList"></div>
+
+      <label for="newFbLabel">プロジェクト名（わかりやすい名前）</label>
+      <input type="text" id="newFbLabel" placeholder="例：町内会会計簿">
+
+      <label for="newFbProjectId">Firebase プロジェクトID</label>
+      <input type="text" id="newFbProjectId" placeholder="my-project-id">
+
+      <label for="newFbApiKey">apiKey</label>
+      <input type="text" id="newFbApiKey" placeholder="AIza...">
+
+      <label for="newFbAuthDomain">authDomain</label>
+      <input type="text" id="newFbAuthDomain" placeholder="my-project-id.firebaseapp.com">
+
+      <label for="newFbAppId">appId</label>
+      <input type="text" id="newFbAppId" placeholder="1:xxxxxxxxxxxx:web:xxxxxxxxxxxxxxxx">
+
+      <label for="newFbRegion">Cloud Functions リージョン</label>
+      <input type="text" id="newFbRegion" placeholder="asia-northeast1" value="asia-northeast1">
+      <div class="hint">これらはFirebaseコンソールの「プロジェクトの設定 ＞ 全般 ＞ マイアプリ ＞ SDK の設定と構成」から取得できます。秘密鍵（サービスアカウントキー）ではないため、このブラウザに保存しても問題ありません。実際のアクセス制御は Cloud Functions 側の管理者メール判定と Security Rules によって行われます。</div>
+
+      <button type="button" class="add-app-btn" id="addFbProjectBtn">プロジェクトを追加</button>
+    </div>
+
+    <div class="section-divider">
+      <label>1. 管理者ログイン</label>
+      <div class="hint" id="fbAuthStatus">未ログイン</div>
+      <button type="button" class="link-btn" id="fbLoginBtn">Googleでログイン</button>
+    </div>
+
+    <div class="section-divider">
+      <label>2. 現在のルール</label>
+      <button type="button" class="link-btn" id="fbLoadRulesBtn">現在のルールを取得</button>
+      <div class="code-box" id="fbCurrentRules">未取得</div>
+    </div>
+
+    <div class="section-divider">
+      <label for="fbRulesFile">3. 新しいルール</label>
+      <input type="file" id="fbRulesFile" accept=".json,application/json">
+      <div class="hint">.jsonファイルを選ぶか、下の欄に直接ルールをペーストしてください。</div>
+      <textarea id="fbRulesText" spellcheck="false" placeholder='{"rules":{...}}'></textarea>
+      <button type="button" class="link-btn" id="fbCheckBtn">安全性をチェック</button>
+      <div class="status" id="fbCheckResult"></div>
+      <button id="fbDeployBtn" disabled>バックアップして更新</button>
+    </div>
+
+    <div class="section-divider">
+      <label>4. 更新履歴（最新20件）</label>
+      <button type="button" class="link-btn" id="fbHistoryBtn">履歴を取得</button>
+      <div id="fbHistoryList"></div>
+    </div>
+
+    <div class="status" id="fbStatus"></div>
+
+    <div class="footer-note">
+      Realtime Database のルール取得・検証・更新・ロールバックは、すべて Cloud Functions の callable 関数（getRules / validateRules / deployRules / listBackups / rollbackRules）を通じて行われます。各関数は呼び出し元の Google アカウントのメールアドレスが、Functions 側で設定した管理者メール一覧（ADMIN_EMAILS）に含まれていることを確認してから処理を実行します。Cloud Functions 自体の用意がまだの場合は、別途お渡しするバックエンド一式（firebase.json / functions/index.js / functions/package.json）を <code>firebase deploy --only functions</code> でデプロイしてください。
+    </div>
   </div>
 </div>
 
@@ -939,8 +1077,6 @@
 
   const dropZone = document.getElementById('dropZone');
   const fileInput = document.getElementById('fileInput');
-  const folderInput = document.getElementById('folderInput');
-  const pickFolderBtn = document.getElementById('pickFolderBtn');
   const fileNameEl = document.getElementById('fileName');
   const uploadBtn = document.getElementById('uploadBtn');
   const statusEl = document.getElementById('status');
@@ -969,31 +1105,23 @@
     if (fileInput.files.length) handleFiles(fileInput.files);
   });
 
-  // 「フォルダを選択」: サブフォルダを含むフォルダ丸ごとを選び、
-  // 選んだフォルダ内でのパス構成（例: gas/Code.js）をそのまま配置パスの初期値として使う
-  pickFolderBtn.addEventListener('click', () => folderInput.click());
-  folderInput.addEventListener('change', () => {
-    if (!folderInput.files.length) return;
-    const filtered = Array.from(folderInput.files).filter((f) => {
-      const rel = f.webkitRelativePath || f.name;
-      const segments = rel.split('/');
-      // 隠しフォルダ・隠しファイル（.git, .github など）や node_modules は誤アップロードを避けるため除外
-      return !segments.some((seg) => seg.startsWith('.') || seg === 'node_modules');
-    });
-    if (!filtered.length) {
-      showStatus('error', '選択したフォルダ内にアップロード対象のファイルが見つかりませんでした（隠しフォルダ・node_modules は自動的に除外されます）。');
-      folderInput.value = '';
-      return;
-    }
-    handleFiles(filtered);
-    folderInput.value = '';
-  });
-
   // ブラウザが重複ダウンロード時に付ける "index (1).html" "index-1.html" "index-35.html" "index_35.html" のような
   // 連番サフィックスを取り除き、本来のファイル名に正規化する（複数回重なっている場合も繰り返し取り除く）
   // 例: "index (1).html" → "index.html" / "index-1.html" → "index.html" / "index-35.html" → "index.html"
   //     "index_35.html" → "index.html" / "clip-web (1).html" → "clip-web.html" / "index-35 (2).html" → "index.html"
+  //
+  // ただし "icon-192.png" "icon-512.png" のように、数字がファイルサイズなど意味を持つ
+  // アイコン系ファイル名は対象外とし、そのまま維持する（PROTECTED_ICON_SIZES参照）。
+  const PROTECTED_ICON_SIZES = [16, 32, 48, 57, 60, 64, 72, 76, 96, 114, 120, 128, 144, 152, 167, 180, 192, 256, 384, 512];
+
+  function isProtectedIconFileName(name) {
+    const m = name.match(/^(icon|icon-maskable|maskable-icon|apple-touch-icon|favicon|android-chrome|mstile)-(\d+)(?:x\d+)?\.(png|ico)$/i);
+    if (!m) return false;
+    return PROTECTED_ICON_SIZES.includes(parseInt(m[2], 10));
+  }
+
   function normalizeUploadFileName(name) {
+    if (isProtectedIconFileName(name)) return name;
     const extMatch = name.match(/(\.[^./\\]+)$/);
     if (!extMatch) return name;
     const ext = extMatch[1];
@@ -1011,8 +1139,6 @@
   }
 
   // ファイルの配置パスの初期値を決める。
-  // 「フォルダを選択」経由のファイルは webkitRelativePath にサブフォルダ構成が入っているので、
-  // 選択したフォルダ自体の名前（先頭要素）だけ取り除いてリポジトリ内のパスとして使う。
   // 例: "digital-accounting/gas/Code.js" → "gas/Code.js"
   function defaultTargetPathFor(file) {
     if (file.webkitRelativePath) {
@@ -1757,6 +1883,490 @@
       const appLabel = matched ? matched.label : repo;
       waitForPagesDeployment(ctx, uploadStartTime, appLabel);
     }
+  }
+
+  // ======================================================================
+  // --- Firebase ルール管理（Realtime Database） ---
+  // GitHubアップロードとは完全に独立した機能。秘密鍵はこのページに置かず、
+  // 実際の更新処理はCloud Functions側（管理者メールで保護）で行う。
+  // ======================================================================
+
+  const FB_PROJECTS_KEY = 'ghUploaderFirebaseProjects';
+  const FB_SELECTED_KEY = 'ghUploaderFirebaseSelectedId';
+  const FB_SDK_VERSION = '12.4.0';
+
+  const toggleFirebasePanelBtn = document.getElementById('toggleFirebasePanelBtn');
+  const firebasePanelBody = document.getElementById('firebasePanelBody');
+  const fbProjectSelect = document.getElementById('fbProjectSelect');
+  const fbProjectHint = document.getElementById('fbProjectHint');
+  const fbProjectListEl = document.getElementById('fbProjectList');
+  const toggleFbManageBtn = document.getElementById('toggleFbManageBtn');
+  const fbManagePanel = document.getElementById('fbManagePanel');
+  const addFbProjectBtn = document.getElementById('addFbProjectBtn');
+  const fbAuthStatusEl = document.getElementById('fbAuthStatus');
+  const fbLoginBtn = document.getElementById('fbLoginBtn');
+  const fbLoadRulesBtn = document.getElementById('fbLoadRulesBtn');
+  const fbCurrentRulesEl = document.getElementById('fbCurrentRules');
+  const fbRulesFileInput = document.getElementById('fbRulesFile');
+  const fbRulesTextEl = document.getElementById('fbRulesText');
+  const fbCheckBtn = document.getElementById('fbCheckBtn');
+  const fbCheckResultEl = document.getElementById('fbCheckResult');
+  const fbDeployBtn = document.getElementById('fbDeployBtn');
+  const fbHistoryBtn = document.getElementById('fbHistoryBtn');
+  const fbHistoryListEl = document.getElementById('fbHistoryList');
+  const fbStatusEl = document.getElementById('fbStatus');
+
+  let fbCheckedText = ''; // 直前に安全性チェックを通過したルールのJSON文字列（更新直前の差し替え検知用）
+  let fbSdkPromise = null;
+  const fbAppInstances = new Map(); // プロジェクトid -> { app, auth, functions }
+
+  toggleFirebasePanelBtn.addEventListener('click', () => {
+    const isHidden = firebasePanelBody.style.display === 'none';
+    firebasePanelBody.style.display = isHidden ? 'block' : 'none';
+    toggleFirebasePanelBtn.textContent = isHidden ? '－ Firebaseルール管理を閉じる' : '＋ Firebaseルール管理を開く';
+  });
+
+  function loadFbProjects() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(FB_PROJECTS_KEY));
+      if (Array.isArray(saved)) return saved;
+    } catch (e) { /* noop */ }
+    return [];
+  }
+
+  function saveFbProjects(list) {
+    try {
+      localStorage.setItem(FB_PROJECTS_KEY, JSON.stringify(list));
+    } catch (e) {
+      showFbStatus('error', 'Firebaseプロジェクト情報の保存に失敗しました。');
+    }
+  }
+
+  function loadFbSelectedId() {
+    try { return localStorage.getItem(FB_SELECTED_KEY) || ''; } catch (e) { return ''; }
+  }
+
+  function saveFbSelectedId(id) {
+    try { localStorage.setItem(FB_SELECTED_KEY, id); } catch (e) { /* noop */ }
+  }
+
+  function getSelectedFbProject() {
+    const projects = loadFbProjects();
+    const id = fbProjectSelect.value || loadFbSelectedId();
+    return projects.find((p) => p.id === id) || projects[0] || null;
+  }
+
+  function resetFbResultsUi() {
+    fbCurrentRulesEl.textContent = '未取得';
+    fbRulesTextEl.value = '';
+    fbCheckedText = '';
+    fbCheckResultEl.className = 'status';
+    fbCheckResultEl.textContent = '';
+    fbDeployBtn.disabled = true;
+    fbHistoryListEl.innerHTML = '';
+    fbStatusEl.className = 'status';
+    fbStatusEl.textContent = '';
+  }
+
+  function renderFbProjects() {
+    const projects = loadFbProjects();
+    const previouslySelected = fbProjectSelect.value || loadFbSelectedId();
+
+    fbProjectSelect.innerHTML = '';
+    if (!projects.length) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = '（プロジェクト未登録）';
+      fbProjectSelect.appendChild(opt);
+      fbProjectHint.textContent = '下の「＋ プロジェクトの追加・削除」からFirebaseプロジェクトを登録してください。';
+    } else {
+      projects.forEach((p) => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.label + '（' + p.projectId + '）';
+        fbProjectSelect.appendChild(opt);
+      });
+      if (previouslySelected && projects.some((p) => p.id === previouslySelected)) {
+        fbProjectSelect.value = previouslySelected;
+      }
+      const current = getSelectedFbProject();
+      fbProjectHint.textContent = current ? 'リージョン: ' + (current.region || 'asia-northeast1') : '';
+    }
+
+    // --- 管理パネルの一覧 ---
+    fbProjectListEl.innerHTML = '';
+    if (!projects.length) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-list';
+      empty.textContent = '登録されているFirebaseプロジェクトがありません。';
+      fbProjectListEl.appendChild(empty);
+    } else {
+      projects.forEach((p) => {
+        const row = document.createElement('div');
+        row.className = 'app-row';
+
+        const info = document.createElement('div');
+        info.className = 'app-info';
+        const name = document.createElement('div');
+        name.className = 'app-name';
+        name.textContent = p.label;
+        const detail = document.createElement('div');
+        detail.className = 'app-repo';
+        detail.textContent = p.projectId + ' ・ ' + (p.region || 'asia-northeast1');
+        info.appendChild(name);
+        info.appendChild(detail);
+
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'app-delete';
+        delBtn.textContent = '削除';
+        delBtn.addEventListener('click', () => removeFbProject(p.id));
+
+        row.appendChild(info);
+        row.appendChild(delBtn);
+        fbProjectListEl.appendChild(row);
+      });
+    }
+  }
+
+  function addFbProject(label, projectId, apiKey, authDomain, appId, region) {
+    if (!label) { showFbStatus('error', 'プロジェクト名を入力してください。'); return false; }
+    if (!projectId) { showFbStatus('error', 'Firebase プロジェクトIDを入力してください。'); return false; }
+    if (!apiKey) { showFbStatus('error', 'apiKey を入力してください。'); return false; }
+    if (!authDomain) { showFbStatus('error', 'authDomain を入力してください。'); return false; }
+    if (!appId) { showFbStatus('error', 'appId を入力してください。'); return false; }
+    const projects = loadFbProjects();
+    const id = 'fbproj-' + Date.now();
+    projects.push({ id, label, projectId, apiKey, authDomain, appId, region: region || 'asia-northeast1' });
+    saveFbProjects(projects);
+    saveFbSelectedId(id);
+    renderFbProjects();
+    resetFbResultsUi();
+    showFbStatus('success', 'Firebaseプロジェクト「' + label + '」を追加しました。');
+    return true;
+  }
+
+  function removeFbProject(id) {
+    const projects = loadFbProjects();
+    const target = projects.find((p) => p.id === id);
+    if (!target) return;
+    if (!confirm('Firebaseプロジェクト「' + target.label + '」を一覧から削除しますか？（Firebase側のプロジェクト自体は削除されません）')) return;
+    const next = projects.filter((p) => p.id !== id);
+    saveFbProjects(next);
+    if (loadFbSelectedId() === id) {
+      saveFbSelectedId(next.length ? next[0].id : '');
+    }
+    // 初期化済みのFirebase Appインスタンスがあれば後片付けしておく
+    if (fbAppInstances.has(id)) {
+      const entry = fbAppInstances.get(id);
+      fbAppInstances.delete(id);
+      loadFirebaseSdk().then((sdk) => {
+        try { sdk.appMod.deleteApp(entry.app); } catch (e) { /* noop */ }
+      }).catch(() => { /* noop */ });
+    }
+    renderFbProjects();
+    resetFbResultsUi();
+    showFbStatus('info', 'Firebaseプロジェクト「' + target.label + '」を削除しました。');
+  }
+
+  toggleFbManageBtn.addEventListener('click', () => {
+    const isHidden = fbManagePanel.style.display === 'none';
+    fbManagePanel.style.display = isHidden ? 'block' : 'none';
+    toggleFbManageBtn.textContent = isHidden ? '－ プロジェクトの追加・削除を閉じる' : '＋ プロジェクトの追加・削除';
+  });
+
+  addFbProjectBtn.addEventListener('click', () => {
+    const ok = addFbProject(
+      document.getElementById('newFbLabel').value.trim(),
+      document.getElementById('newFbProjectId').value.trim(),
+      document.getElementById('newFbApiKey').value.trim(),
+      document.getElementById('newFbAuthDomain').value.trim(),
+      document.getElementById('newFbAppId').value.trim(),
+      document.getElementById('newFbRegion').value.trim()
+    );
+    if (ok) {
+      ['newFbLabel', 'newFbProjectId', 'newFbApiKey', 'newFbAuthDomain', 'newFbAppId'].forEach((id) => {
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('newFbRegion').value = 'asia-northeast1';
+    }
+  });
+
+  fbProjectSelect.addEventListener('change', () => {
+    saveFbSelectedId(fbProjectSelect.value);
+    const current = getSelectedFbProject();
+    fbProjectHint.textContent = current ? 'リージョン: ' + (current.region || 'asia-northeast1') : '';
+    resetFbResultsUi();
+    // 既にログイン済みのプロジェクトに切り替えた場合は、ログイン状態の表示を更新する
+    if (current && fbAppInstances.has(current.id)) {
+      updateFbAuthStatus(fbAppInstances.get(current.id).auth.currentUser);
+    } else {
+      updateFbAuthStatus(null);
+    }
+  });
+
+  renderFbProjects();
+
+  function showFbStatus(type, msg) {
+    fbStatusEl.className = 'status show ' + type;
+    fbStatusEl.textContent = msg;
+  }
+
+  // Firebase JS SDK（ESM）を初回使用時にだけ読み込む（未使用ならコストゼロ）
+  function loadFirebaseSdk() {
+    if (!fbSdkPromise) {
+      fbSdkPromise = Promise.all([
+        import('https://www.gstatic.com/firebasejs/' + FB_SDK_VERSION + '/firebase-app.js'),
+        import('https://www.gstatic.com/firebasejs/' + FB_SDK_VERSION + '/firebase-auth.js'),
+        import('https://www.gstatic.com/firebasejs/' + FB_SDK_VERSION + '/firebase-functions.js')
+      ]).then(([appMod, authMod, fnMod]) => ({ appMod, authMod, fnMod }));
+    }
+    return fbSdkPromise;
+  }
+
+  function updateFbAuthStatus(user) {
+    if (user) {
+      fbAuthStatusEl.textContent = '✓ ログイン中: ' + user.email;
+      fbAuthStatusEl.style.color = 'var(--success)';
+    } else {
+      fbAuthStatusEl.textContent = '未ログイン（上のボタンからGoogleでログインしてください）';
+      fbAuthStatusEl.style.color = '';
+    }
+  }
+
+  // 選択中のFirebaseプロジェクトに対応するFirebase Appインスタンス（Auth/Functions）を用意する。
+  // 同じプロジェクトを再度使う場合はキャッシュを使い回す。
+  function getOrInitFirebaseApp(project, sdk) {
+    if (fbAppInstances.has(project.id)) return fbAppInstances.get(project.id);
+    const config = {
+      apiKey: project.apiKey,
+      authDomain: project.authDomain,
+      projectId: project.projectId,
+      appId: project.appId
+    };
+    const app = sdk.appMod.initializeApp(config, project.id);
+    const auth = sdk.authMod.getAuth(app);
+    const functions = sdk.fnMod.getFunctions(app, project.region || 'asia-northeast1');
+    sdk.authMod.onAuthStateChanged(auth, (user) => {
+      const current = getSelectedFbProject();
+      if (current && current.id === project.id) updateFbAuthStatus(user);
+    });
+    const entry = { app, auth, functions };
+    fbAppInstances.set(project.id, entry);
+    return entry;
+  }
+
+  // ログイン済みかどうかまで確認した上で、呼び出しに使える文脈（sdk/project/functions等）を返す。
+  // 未選択・未ログインの場合は null を返し、エラーメッセージを表示する。
+  async function ensureFbReady() {
+    const project = getSelectedFbProject();
+    if (!project) {
+      showFbStatus('error', 'Firebaseプロジェクトを選択（または追加）してください。');
+      return null;
+    }
+    let sdk;
+    try {
+      sdk = await loadFirebaseSdk();
+    } catch (e) {
+      showFbStatus('error', 'Firebase SDKの読み込みに失敗しました。ネットワーク状況をご確認ください。');
+      return null;
+    }
+    let entry;
+    try {
+      entry = getOrInitFirebaseApp(project, sdk);
+    } catch (e) {
+      showFbStatus('error', 'Firebaseプロジェクトの初期化に失敗しました: ' + e.message + '（apiKeyなどの設定値をご確認ください）');
+      return null;
+    }
+    if (!entry.auth.currentUser) {
+      showFbStatus('error', '先に「Googleでログイン」してください。');
+      return null;
+    }
+    return { sdk: sdk, project: project, app: entry.app, auth: entry.auth, functions: entry.functions };
+  }
+
+  fbLoginBtn.addEventListener('click', async () => {
+    const project = getSelectedFbProject();
+    if (!project) { showFbStatus('error', 'Firebaseプロジェクトを選択（または追加）してください。'); return; }
+    showFbStatus('info', 'Firebase SDKを読み込んでいます…');
+    let sdk;
+    try {
+      sdk = await loadFirebaseSdk();
+    } catch (e) {
+      showFbStatus('error', 'Firebase SDKの読み込みに失敗しました。ネットワーク状況をご確認ください。');
+      return;
+    }
+    let entry;
+    try {
+      entry = getOrInitFirebaseApp(project, sdk);
+    } catch (e) {
+      showFbStatus('error', 'Firebaseプロジェクトの初期化に失敗しました: ' + e.message);
+      return;
+    }
+    try {
+      showFbStatus('info', 'Googleアカウントでログインしてください…');
+      await sdk.authMod.signInWithPopup(entry.auth, new sdk.authMod.GoogleAuthProvider());
+      showFbStatus('success', 'ログインしました。');
+    } catch (e) {
+      showFbStatus('error', 'ログインに失敗しました: ' + e.message);
+    }
+  });
+
+  fbLoadRulesBtn.addEventListener('click', async () => {
+    const ctx = await ensureFbReady();
+    if (!ctx) return;
+    showFbStatus('info', '現在のルールを取得中…');
+    try {
+      const callable = ctx.sdk.fnMod.httpsCallable(ctx.functions, 'getRules');
+      const res = await callable();
+      fbCurrentRulesEl.textContent = JSON.stringify(res.data.rules, null, 2);
+      showFbStatus('success', '現在のルールを取得しました。');
+    } catch (e) {
+      showFbStatus('error', 'ルールの取得に失敗しました: ' + e.message);
+    }
+  });
+
+  fbRulesFileInput.addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    try {
+      fbRulesTextEl.value = await f.text();
+    } catch (e2) {
+      showFbStatus('error', 'ファイルの読み込みに失敗しました。');
+    }
+  });
+
+  fbCheckBtn.addEventListener('click', async () => {
+    const ctx = await ensureFbReady();
+    if (!ctx) return;
+
+    let parsed;
+    try {
+      parsed = JSON.parse(fbRulesTextEl.value);
+    } catch (e) {
+      fbCheckResultEl.className = 'status show error';
+      fbCheckResultEl.textContent = 'JSONとして解析できませんでした: ' + e.message;
+      fbCheckedText = '';
+      fbDeployBtn.disabled = true;
+      return;
+    }
+
+    fbCheckResultEl.className = 'status show info';
+    fbCheckResultEl.textContent = '安全性をチェック中…';
+    try {
+      const callable = ctx.sdk.fnMod.httpsCallable(ctx.functions, 'validateRules');
+      const res = await callable({ rules: parsed });
+      fbCheckResultEl.className = 'status show ' + (res.data.blocked ? 'error' : 'success');
+      fbCheckResultEl.innerHTML = (res.data.messages || []).map((m) => escapeHtml(m)).join('<br>');
+      fbCheckedText = JSON.stringify(parsed);
+      fbDeployBtn.disabled = !!res.data.blocked;
+    } catch (e) {
+      fbCheckResultEl.className = 'status show error';
+      fbCheckResultEl.textContent = 'チェックに失敗しました: ' + e.message;
+      fbCheckedText = '';
+      fbDeployBtn.disabled = true;
+    }
+  });
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  fbDeployBtn.addEventListener('click', async () => {
+    const ctx = await ensureFbReady();
+    if (!ctx) return;
+
+    let parsed;
+    try {
+      parsed = JSON.parse(fbRulesTextEl.value);
+    } catch (e) {
+      showFbStatus('error', 'JSONとして解析できませんでした: ' + e.message);
+      return;
+    }
+    if (JSON.stringify(parsed) !== fbCheckedText) {
+      showFbStatus('error', 'チェック後に内容が変更されています。もう一度「安全性をチェック」を実行してください。');
+      return;
+    }
+    if (!confirm('現在のルールをバックアップしてから、本番ルールを更新します。続行しますか？')) return;
+
+    fbDeployBtn.disabled = true;
+    showFbStatus('info', 'バックアップを取得し、ルールを更新しています…');
+    try {
+      const callable = ctx.sdk.fnMod.httpsCallable(ctx.functions, 'deployRules');
+      const res = await callable({ rules: parsed, note: 'GitHub自動アップローダー経由で更新' });
+      showFbStatus('success', '✔ 更新が完了しました（バックアップID: ' + res.data.backupId + '）');
+      fbLoadRulesBtn.click();
+      fbHistoryBtn.click();
+    } catch (e) {
+      showFbStatus('error', '更新に失敗しました: ' + e.message);
+    } finally {
+      fbDeployBtn.disabled = false;
+    }
+  });
+
+  fbHistoryBtn.addEventListener('click', async () => {
+    const ctx = await ensureFbReady();
+    if (!ctx) return;
+    showFbStatus('info', '履歴を取得中…');
+    try {
+      const callable = ctx.sdk.fnMod.httpsCallable(ctx.functions, 'listBackups');
+      const res = await callable();
+      renderFbHistory(res.data.backups || [], ctx);
+      showFbStatus('success', '履歴を取得しました。');
+    } catch (e) {
+      showFbStatus('error', '履歴の取得に失敗しました: ' + e.message);
+    }
+  });
+
+  function renderFbHistory(backups, ctx) {
+    fbHistoryListEl.innerHTML = '';
+    if (!backups.length) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-list';
+      empty.textContent = 'バックアップ履歴がありません。';
+      fbHistoryListEl.appendChild(empty);
+      return;
+    }
+    backups.forEach((b) => {
+      const row = document.createElement('div');
+      row.className = 'fb-history-row';
+
+      const info = document.createElement('div');
+      info.className = 'fb-history-info';
+      const date = document.createElement('div');
+      date.className = 'fb-history-date';
+      date.textContent = formatDateTime(b.createdAt);
+      const note = document.createElement('div');
+      note.className = 'fb-history-note';
+      note.textContent = (b.note || '') + (b.createdBy ? '（' + b.createdBy + '）' : '');
+      info.appendChild(date);
+      info.appendChild(note);
+
+      const rollbackBtn = document.createElement('button');
+      rollbackBtn.type = 'button';
+      rollbackBtn.className = 'fb-rollback-btn';
+      rollbackBtn.textContent = 'この状態に戻す';
+      rollbackBtn.addEventListener('click', async () => {
+        if (!confirm('現在のルールを安全のためバックアップしたうえで、この時点（' + formatDateTime(b.createdAt) + '）のルールに戻します。よろしいですか？')) return;
+        rollbackBtn.disabled = true;
+        showFbStatus('info', 'ロールバック中…');
+        try {
+          const callable = ctx.sdk.fnMod.httpsCallable(ctx.functions, 'rollbackRules');
+          await callable({ backupId: b.id });
+          showFbStatus('success', '✔ ロールバックが完了しました。');
+          fbLoadRulesBtn.click();
+          fbHistoryBtn.click();
+        } catch (e) {
+          showFbStatus('error', 'ロールバックに失敗しました: ' + e.message);
+        } finally {
+          rollbackBtn.disabled = false;
+        }
+      });
+
+      row.appendChild(info);
+      row.appendChild(rollbackBtn);
+      fbHistoryListEl.appendChild(row);
+    });
   }
 </script>
 </body>
