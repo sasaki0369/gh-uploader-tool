@@ -1039,11 +1039,16 @@
     return filterOutHiddenFiles(out);
   }
 
-  // 隠しフォルダ・隠しファイル（.git, .github など）やnode_modulesは誤アップロード防止のため除外
+  // バージョン管理の内部フォルダ（.git）やOS・エディタが自動生成するゴミファイル、
+  // node_modules は誤アップロード防止のため除外する。
+  // ただし ".github"（GitHub Actionsのワークフロー等）のように、意図的にリポジトリへ
+  // 含めたい "." 始まりのフォルダ・ファイルは誤って除外しないよう、名前を限定して判定する。
+  const EXCLUDED_SEGMENT_NAMES = ['.git', 'node_modules', '.DS_Store', 'Thumbs.db', '.idea'];
+
   function filterOutHiddenFiles(files) {
     return files.filter((f) => {
       const rel = f.webkitRelativePath || f.name;
-      return !rel.split('/').some((seg) => seg.startsWith('.') || seg === 'node_modules');
+      return !rel.split('/').some((seg) => EXCLUDED_SEGMENT_NAMES.includes(seg));
     });
   }
 
