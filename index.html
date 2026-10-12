@@ -416,7 +416,8 @@
   <input type="text" id="path" placeholder="index.html" value="index.html">
   <div class="hint" id="pathHint">このパスがそのままファイル名として使われます。パス欄を自分で編集していない場合は、選んだファイルの名前が自動で入ります。</div>
   <div class="hint" id="pathAutoHint" style="display:none;"></div>
-  <div class="hint" id="multiPathHint" style="display:none;">ファイルごとに配置パスを個別に指定できます（例: <code>gas/Code.js</code>）。リポジトリ内の既存ファイルを検索し、同名ファイルがあれば階層が自動的に反映されます。</div>
+  <select id="pathCandidateSelect" style="display:none; margin-top:4px;"></select>
+  <div class="hint" id="multiPathHint" style="display:none;">ファイルごとに配置パスを個別に指定できます（例: <code>gas/Code.js</code>）。フォルダをドラッグ＆ドロップするか「フォルダを選択」した場合はサブフォルダ構成が、単体のファイルだけを選んだ場合はリポジトリ内の既存ファイルを検索して階層が自動的に反映されます。</div>
   <div id="multiPathList" style="display:none;"></div>
 
   <label for="message">コミットメッセージ（任意）</label>
@@ -428,6 +429,8 @@
     <div class="fname" id="fileName"></div>
   </div>
   <input type="file" id="fileInput" multiple>
+  <button type="button" class="link-btn" id="pickFolderBtn">📁 フォルダを選択してアップロード（サブフォルダ構成を保持）</button>
+  <input type="file" id="folderInput" webkitdirectory multiple style="display:none;">
 
   <button id="uploadBtn" disabled>GitHub にアップロード</button>
 
@@ -937,6 +940,8 @@
 
   const dropZone = document.getElementById('dropZone');
   const fileInput = document.getElementById('fileInput');
+  const folderInput = document.getElementById('folderInput');
+  const pickFolderBtn = document.getElementById('pickFolderBtn');
   const fileNameEl = document.getElementById('fileName');
   const uploadBtn = document.getElementById('uploadBtn');
   const statusEl = document.getElementById('status');
@@ -954,16 +959,93 @@
     dropZone.classList.add('dragover');
   });
   dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-  dropZone.addEventListener('drop', (e) => {
+  dropZone.addEventListener('drop', async (e) => {
     e.preventDefault();
     dropZone.classList.remove('dragover');
-    if (e.dataTransfer.files.length) {
-      handleFiles(e.dataTransfer.files);
+    const files = await getFilesFromDataTransfer(e.dataTransfer);
+    if (files.length) {
+      handleFiles(files);
     }
   });
   fileInput.addEventListener('change', () => {
     if (fileInput.files.length) handleFiles(fileInput.files);
   });
+
+  // 「フォルダを選択」: スマホなど、ドラッグ＆ドロップが使えない環境向けの代替手段。
+  // フォルダ丸ごとを選ぶと、各ファイルに webkitRelativePath（選んだフォルダ名を含む相対パス）が
+  // 自動的に付与されるので、それをそのまま使う。
+  pickFolderBtn.addEventListener('click', () => folderInput.click());
+  folderInput.addEventListener('change', () => {
+    if (!folderInput.files.length) return;
+    const filtered = filterOutHiddenFiles(Array.from(folderInput.files));
+    if (!filtered.length) {
+      showStatus('error', '選択したフォルダ内にアップロード対象のファイルが見つかりませんでした（隠しフォルダ・node_modules は自動的に除外されます）。');
+      folderInput.value = '';
+      return;
+    }
+    handleFiles(filtered);
+    folderInput.value = '';
+  });
+
+  // --- フォルダ単位でのアップロード対応（ドラッグ＆ドロップ／フォルダ選択ボタンの両方） ---
+  // フォルダごと渡された場合、各ファイルに「選択したフォルダ名を含む」相対パス
+  // （例: "GabaGrowth-Android-v2.1-source/app/src/...","GabaGrowth-Android-v2.1-source/build.gradle"）を
+  // webkitRelativePath として持たせる。defaultTargetPathFor() 側で、この最初の要素
+  // （選んだフォルダ自身の名前）だけを取り除き、リポジトリ内のパスとして使う。
+  // （このAPIに対応していないブラウザでは、従来どおりファイル名のみで扱われ、
+  //   ファイル名ベースの既存パス自動判別にフォールバックする。）
+  function readEntryAsFile(entry) {
+    return new Promise((resolve, reject) => entry.file(resolve, reject));
+  }
+  function readDirEntries(reader) {
+    return new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+  }
+  async function collectDirectoryContents(dirEntry, prefix, out) {
+    const reader = dirEntry.createReader();
+    let entries;
+    do {
+      entries = await readDirEntries(reader);
+      for (const child of entries) {
+        const childPrefix = prefix ? prefix + '/' + child.name : child.name;
+        if (child.isFile) {
+          const file = await readEntryAsFile(child);
+          try {
+            Object.defineProperty(file, 'webkitRelativePath', { value: childPrefix, configurable: true });
+          } catch (e) { /* 付与できない場合はファイル名のみで扱う */ }
+          out.push(file);
+        } else if (child.isDirectory) {
+          await collectDirectoryContents(child, childPrefix, out);
+        }
+      }
+    } while (entries.length > 0);
+  }
+  async function getFilesFromDataTransfer(dataTransfer) {
+    const items = dataTransfer.items;
+    if (!items || !items.length || typeof items[0].webkitGetAsEntry !== 'function') {
+      return Array.from(dataTransfer.files); // フォールバック: 通常のファイル一覧（構成情報なし）
+    }
+    const out = [];
+    const tasks = [];
+    for (let i = 0; i < items.length; i++) {
+      const entry = items[i].webkitGetAsEntry && items[i].webkitGetAsEntry();
+      if (!entry) continue;
+      if (entry.isFile) {
+        tasks.push(readEntryAsFile(entry).then((file) => { out.push(file); }));
+      } else if (entry.isDirectory) {
+        tasks.push(collectDirectoryContents(entry, entry.name, out));
+      }
+    }
+    await Promise.all(tasks);
+    return filterOutHiddenFiles(out);
+  }
+
+  // 隠しフォルダ・隠しファイル（.git, .github など）やnode_modulesは誤アップロード防止のため除外
+  function filterOutHiddenFiles(files) {
+    return files.filter((f) => {
+      const rel = f.webkitRelativePath || f.name;
+      return !rel.split('/').some((seg) => seg.startsWith('.') || seg === 'node_modules');
+    });
+  }
 
   // ブラウザが重複ダウンロード時に付ける "index (1).html" "index-1.html" "index-35.html" "index_35.html" のような
   // 連番サフィックスを取り除き、本来のファイル名に正規化する（複数回重なっている場合も繰り返し取り除く）
@@ -999,11 +1081,14 @@
   }
 
   // ファイルの配置パスの初期値を決める。
-  // 例: "digital-accounting/gas/Code.js" → "gas/Code.js"
+  // フォルダ単位で渡された場合、webkitRelativePath には「選んだフォルダ自身の名前」を含む
+  // パスが入っている（例: "GabaGrowth-Android-v2.1-source/app/build.gradle"）ので、
+  // その先頭要素（選んだフォルダ自身の名前）だけを取り除いてリポジトリ内のパスとして使う。
+  // 例: "GabaGrowth-Android-v2.1-source/app/build.gradle" → "app/build.gradle"
   function defaultTargetPathFor(file) {
     if (file.webkitRelativePath) {
       const parts = file.webkitRelativePath.split('/').filter(Boolean);
-      parts.shift(); // 選択したフォルダ自体の名前を除去
+      parts.shift(); // 選んだフォルダ自身の名前を除去
       if (parts.length) {
         const base = normalizeUploadFileName(parts.pop());
         parts.push(base);
@@ -1074,10 +1159,17 @@
       meta.className = 'path-row-meta';
       meta.textContent = file.webkitRelativePath ? '' : '既存ファイルの階層を確認中…';
 
+      // 同名ファイルがリポジトリ内の複数の場所で見つかった場合に、候補から選べるようにする
+      // （実際の change ハンドラは候補が見つかった時点で fillCandidateSelect が設定する）
+      const candidateSelect = document.createElement('select');
+      candidateSelect.style.display = 'none';
+      candidateSelect.style.marginTop = '4px';
+
       wrap.appendChild(row);
       wrap.appendChild(meta);
+      wrap.appendChild(candidateSelect);
       container.appendChild(wrap);
-      multiRowMetaEls[idx] = { input, meta };
+      multiRowMetaEls[idx] = { input, meta, candidateSelect };
     });
   }
 
@@ -1163,18 +1255,25 @@
       if (selectedFiles.length === 1) {
         const pathInputEl = document.getElementById('path');
         const pathAutoHint = document.getElementById('pathAutoHint');
+        const candidateSelect = document.getElementById('pathCandidateSelect');
         if (matches.length === 1) {
           if (!pathTouchedByUser) {
             pathInputEl.value = matches[0];
           }
           pathAutoHint.className = 'hint success';
           pathAutoHint.textContent = '✓ リポジトリ内の既存ファイル「' + matches[0] + '」を検出し、配置パスに自動入力しました。';
+          candidateSelect.style.display = 'none';
         } else if (matches.length > 1) {
           pathAutoHint.className = 'hint error';
-          pathAutoHint.textContent = '⚠ 同名のファイルが複数の場所に見つかりました（' + matches.join(' / ') + '）。配置パスを手動で確認・選択してください。';
+          pathAutoHint.textContent = '⚠ 同名のファイルが複数の場所に見つかりました。下のプルダウンから配置先を選んでください。';
+          fillCandidateSelect(candidateSelect, matches, (chosen) => {
+            pathInputEl.value = chosen;
+            pathTouchedByUser = true;
+          });
         } else {
           pathAutoHint.className = 'hint';
           pathAutoHint.textContent = 'リポジトリ内に同名の既存ファイルは見つかりませんでした（新規作成されます）。';
+          candidateSelect.style.display = 'none';
         }
       } else {
         const rowEls = multiRowMetaEls[idx];
@@ -1186,15 +1285,43 @@
           }
           rowEls.meta.className = 'path-row-meta success';
           rowEls.meta.textContent = '✓ 既存ファイル「' + matches[0] + '」を検出し自動入力しました';
+          rowEls.candidateSelect.style.display = 'none';
         } else if (matches.length > 1) {
           rowEls.meta.className = 'path-row-meta error';
-          rowEls.meta.textContent = '⚠ 同名ファイルが複数見つかりました（' + matches.join(' / ') + '）。手動で確認してください';
+          rowEls.meta.textContent = '⚠ 同名ファイルが複数見つかりました。下のプルダウンから配置先を選んでください';
+          fillCandidateSelect(rowEls.candidateSelect, matches, (chosen) => {
+            rowEls.input.value = chosen;
+            multiFilePaths[idx] = chosen;
+            multiFilePathsTouched[idx] = true;
+          });
         } else {
           rowEls.meta.className = 'path-row-meta';
           rowEls.meta.textContent = '既存ファイルは見つかりませんでした（新規作成されます）';
+          rowEls.candidateSelect.style.display = 'none';
         }
       }
     });
+  }
+
+  // 同名ファイルの候補一覧を <select> に反映する。選択時に onPick(選んだパス) を呼ぶ。
+  function fillCandidateSelect(selectEl, candidates, onPick) {
+    selectEl.innerHTML = '';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = '配置先を選択してください（' + candidates.length + '件）';
+    selectEl.appendChild(placeholder);
+    candidates.forEach((c) => {
+      const opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      selectEl.appendChild(opt);
+    });
+    selectEl.value = '';
+    selectEl.style.display = '';
+    // 既存のリスナーを使い回せるよう、onchangeプロパティに直接差し替える（addEventListenerの重複登録を避ける）
+    selectEl.onchange = () => {
+      if (selectEl.value) onPick(selectEl.value);
+    };
   }
 
   function updatePathUiForFileCount() {
