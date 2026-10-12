@@ -1841,6 +1841,10 @@
         if (putRes.status === 200 || putRes.status === 201) {
           const commitUrl = putData.commit && putData.commit.html_url;
           results.push({ path: targetPath, ok: true, commitUrl });
+        } else if (putRes.status === 403 && /^\.github\/workflows\//.test(targetPath)) {
+          // .github/workflows/ 配下への書き込みは、GitHubの仕様上「Contents」権限だけでは許可されず、
+          // トークン側に別途「Workflows」権限が必要（Fine-grained PATの場合）。これはツールの不具合ではない。
+          throw new Error('（403）' + (putData.message || 'Resource not accessible by personal access token') + ' ／ .github/workflows/ 配下の更新には、トークンに「Workflows: Read and write」権限が別途必要です。GitHub の Settings＞Developer settings＞Fine-grained tokens で、このトークンの Repository permissions に「Workflows」を追加（Read and write）してから再度お試しください。');
         } else {
           throw new Error('（' + putRes.status + '）' + (putData.message || JSON.stringify(putData)));
         }
