@@ -1582,6 +1582,21 @@
     return runs[0];
   }
 
+  // タイムアウトやエラーで自動確認が止まった際に、後からタップして
+  // 同じ内容で再確認（ビルド検知→完了待ち→APKダウンロード）できるようにするボタンを表示する。
+  function renderApkRetryButton(ctx, startTimeMs, appLabel) {
+    apkDownloadAreaEl.innerHTML = '';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'link-btn';
+    btn.textContent = '🔄 ビルド状況を再確認する';
+    btn.addEventListener('click', () => {
+      btn.disabled = true;
+      checkAndBuildApk(ctx, startTimeMs, appLabel);
+    });
+    apkDownloadAreaEl.appendChild(btn);
+  }
+
   async function checkAndBuildApk(ctx, startTimeMs, appLabel) {
     const headers = {
       'Authorization': 'Bearer ' + ctx.token,
@@ -1599,10 +1614,13 @@
     if (!workflow) return; // Androidビルド用のワークフローが見つからないアプリでは何もしない
 
     showApkStatus('info', '「' + appLabel + '」のAPKビルド状況を確認しています…');
+    const actionsTabUrl = 'https://github.com/' + ctx.repo + '/actions';
 
-    // push で自動起動したはずのランを探す（最大15秒ほど待つ）
+    // push で自動起動したはずのランを探す（最大30秒ほど待つ）。
+    // ワークフローファイル自体を初めて追加した直後は、GitHub側の認識にやや時間がかかることがあるため、
+    // 少し長めに待つ。
     let run = null;
-    for (let i = 0; i < 3 && !run; i++) {
+    for (let i = 0; i < 6 && !run; i++) {
       try {
         run = await findTriggeredRun(ctx, headers, workflow.id, startTimeMs);
       } catch (e) { /* retry */ }
@@ -1620,26 +1638,31 @@
         });
         if (dRes.status === 403 || dRes.status === 404) {
           showApkStatus('info', 'APKビルドの自動開始をスキップしました（トークンに「Actions: Read and write」権限がありません）。GitHub側で手動実行するか、トークンの権限を追加してください。');
+          renderApkRetryButton(ctx, startTimeMs, appLabel);
           return;
         }
         if (!dRes.ok && dRes.status !== 204) {
-          showApkStatus('info', 'APKビルドを自動開始できませんでした。GitHub側のActionsタブから手動実行してください。');
+          showApkStatus('info', 'APKビルドを自動開始できませんでした。<br><a href="' + actionsTabUrl + '" target="_blank" rel="noopener">GitHubのActionsタブから手動実行する</a>');
+          renderApkRetryButton(ctx, startTimeMs, appLabel);
           return;
         }
-        for (let i = 0; i < 4 && !run; i++) {
-          await sleep(4000);
+        // 初回dispatch直後はランの生成に時間がかかる場合があるため、最大40秒ほど待つ
+        for (let i = 0; i < 8 && !run; i++) {
+          await sleep(5000);
           try {
             run = await findTriggeredRun(ctx, headers, workflow.id, dispatchTime);
           } catch (e) { /* retry */ }
         }
       } catch (e) {
-        showApkStatus('info', 'APKビルドの自動開始中にエラーが発生しました。GitHub側のActionsタブをご確認ください。');
+        showApkStatus('info', 'APKビルドの自動開始中にエラーが発生しました。<br><a href="' + actionsTabUrl + '" target="_blank" rel="noopener">GitHubのActionsタブを確認する</a>');
+        renderApkRetryButton(ctx, startTimeMs, appLabel);
         return;
       }
     }
 
     if (!run) {
-      showApkStatus('info', 'ビルドの開始を確認できませんでした。時間をおいて、GitHub側のActionsタブをご確認ください。');
+      showApkStatus('info', 'ビルドの開始を自動では確認できませんでした。ワークフローファイルを初めて追加した直後はGitHub側の認識に1〜2分ほどかかることがあるため、実際にはビルドが始まっている可能性があります。<br><a href="' + actionsTabUrl + '" target="_blank" rel="noopener">GitHubのActionsタブで確認する</a><br><span style="opacity:0.8">※次回以降のアップロードでは、通常もっと早く自動検知できるはずです。</span>');
+      renderApkRetryButton(ctx, startTimeMs, appLabel);
       return;
     }
 
@@ -1660,11 +1683,13 @@
 
     if (!finished) {
       showApkStatus('info', 'ビルドの完了確認がタイムアウトしました。<br><a href="' + run.html_url + '" target="_blank" rel="noopener">GitHubでビルド状況を確認する</a>');
+      renderApkRetryButton(ctx, startTimeMs, appLabel);
       return;
     }
     if (finished.conclusion !== 'success') {
       showApkStatus('error', '✖ 「' + appLabel + '」のAPKビルドに失敗しました（' + finished.conclusion + '）。<br><a href="' + finished.html_url + '" target="_blank" rel="noopener">GitHubでログを確認する</a>');
       notifyUser('ビルド失敗', '「' + appLabel + '」のAPKビルドに失敗しました。');
+      renderApkRetryButton(ctx, startTimeMs, appLabel);
       return;
     }
 
@@ -1678,11 +1703,13 @@
       const artifacts = aData.artifacts || [];
       if (!artifacts.length) {
         showApkStatus('info', 'ビルドは成功しましたが、成果物（APK）が見つかりませんでした。<br><a href="' + finished.html_url + '" target="_blank" rel="noopener">GitHubで確認する</a>');
+        renderApkRetryButton(ctx, startTimeMs, appLabel);
         return;
       }
       artifact = artifacts.find((a) => /apk/i.test(a.name)) || artifacts[0];
     } catch (e) {
       showApkStatus('error', '成果物の取得に失敗しました：' + e.message);
+      renderApkRetryButton(ctx, startTimeMs, appLabel);
       return;
     }
 
@@ -1734,6 +1761,7 @@
       notifyUser('APKビルド完了', '「' + appLabel + '」のAPKができました。タップしてダウンロードしてください。');
     } catch (e) {
       showApkStatus('error', 'APKの取得中にエラーが発生しました：' + e.message);
+      renderApkRetryButton(ctx, startTimeMs, appLabel);
     }
   }
 
