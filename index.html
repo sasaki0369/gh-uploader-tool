@@ -436,6 +436,8 @@
 
   <div class="status" id="status"></div>
   <div class="status" id="deployStatus"></div>
+  <div class="status" id="apkStatus"></div>
+  <div id="apkDownloadArea"></div>
 
   <button type="button" class="link-btn" id="notifyToggleBtn">🔔 反映時に通知を受け取る（任意）</button>
 
@@ -964,11 +966,14 @@
     dropZone.classList.remove('dragover');
     const files = await getFilesFromDataTransfer(e.dataTransfer);
     if (files.length) {
-      handleFiles(files);
+      const expanded = await expandZipIfNeeded(files);
+      if (expanded.length) handleFiles(expanded);
     }
   });
-  fileInput.addEventListener('change', () => {
-    if (fileInput.files.length) handleFiles(fileInput.files);
+  fileInput.addEventListener('change', async () => {
+    if (!fileInput.files.length) return;
+    const expanded = await expandZipIfNeeded(fileInput.files);
+    if (expanded.length) handleFiles(expanded);
   });
 
   // 「フォルダを選択」: スマホなど、ドラッグ＆ドロップが使えない環境向けの代替手段。
@@ -1050,6 +1055,62 @@
       const rel = f.webkitRelativePath || f.name;
       return !rel.split('/').some((seg) => EXCLUDED_SEGMENT_NAMES.includes(seg));
     });
+  }
+
+  // zipファイルが1つだけ選ばれた場合、中身を自動展開してフォルダ構成を保ったまま
+  // 複数ファイルとして扱う（スマホでフォルダ一式をまとめてアップしたい場合向け）。
+  // zip以外、または複数ファイルが同時に選ばれた場合はそのまま返す。
+  async function expandZipIfNeeded(fileList) {
+    const files = Array.from(fileList);
+    if (files.length !== 1 || !/\.zip$/i.test(files[0].name)) return files;
+
+    const zipFile = files[0];
+    showStatus('info', '📦 「' + zipFile.name + '」を展開しています…');
+    try {
+      await loadJSZip();
+      const buffer = await zipFile.arrayBuffer();
+      const zip = await window.JSZip.loadAsync(buffer);
+
+      const entries = [];
+      zip.forEach((relPath, entry) => {
+        if (!entry.dir) entries.push({ relPath: relPath.replace(/\\/g, '/'), entry });
+      });
+
+      const filtered = entries.filter((e) => {
+        const segs = e.relPath.split('/').filter(Boolean);
+        return segs.length && !segs.some((seg) => EXCLUDED_SEGMENT_NAMES.includes(seg));
+      });
+
+      if (!filtered.length) {
+        showStatus('error', 'zip内にアップロード対象のファイルが見つかりませんでした（隠しフォルダ・node_modules は自動的に除外されます）。');
+        return [];
+      }
+
+      // zip内の全ファイルが共通のトップフォルダ配下にあるかどうかを判定する。
+      // 共通のトップフォルダが無い場合（zipの直下にファイルが並んでいる場合）は、
+      // defaultTargetPathFor が常に「先頭要素＝選んだフォルダ名」として取り除く仕組みに
+      // 合わせるため、zipファイル自身の名前を仮想的なトップフォルダとして補う。
+      const firstSegs = filtered.map((e) => e.relPath.split('/')[0]);
+      const hasCommonRoot = filtered.every((e) => e.relPath.includes('/')) && firstSegs.every((s) => s === firstSegs[0]);
+      const zipBaseName = zipFile.name.replace(/\.zip$/i, '');
+
+      const out = [];
+      for (const e of filtered) {
+        const blob = await e.entry.async('blob');
+        const name = e.relPath.split('/').pop();
+        const file = new File([blob], name);
+        const relForPath = hasCommonRoot ? e.relPath : (zipBaseName + '/' + e.relPath);
+        try {
+          Object.defineProperty(file, 'webkitRelativePath', { value: relForPath, configurable: true });
+        } catch (err) { /* 付与できない場合はファイル名のみで扱う */ }
+        out.push(file);
+      }
+      showStatus('success', '📦 「' + zipFile.name + '」を展開しました（' + out.length + '件）。内容をご確認のうえアップロードしてください。');
+      return out;
+    } catch (e) {
+      showStatus('error', 'zipの展開に失敗しました：' + e.message);
+      return [];
+    }
   }
 
   // ブラウザが重複ダウンロード時に付ける "index (1).html" "index-1.html" "index-35.html" "index_35.html" のような
@@ -1355,7 +1416,7 @@
       // パス欄を自分で編集していない場合は、選んだファイルの名前をそのまま使う
       // （index.html固定にしてしまうと、別名のファイルまで index.html として上書きされてしまうため）
       if (!pathTouchedByUser && selectedFiles.length === 1) {
-        pathInputEl.value = normalizeUploadFileName(selectedFiles[0].name);
+        pathInputEl.value = defaultTargetPathFor(selectedFiles[0]);
       }
     }
   }
@@ -1470,6 +1531,210 @@
       }
     }
     showDeployStatus('info', '反映確認がタイムアウトしました。時間をおいて手動でページをご確認ください。');
+  }
+
+  // --- APK自動ビルド＆ダウンロード ---
+  const apkStatusEl = document.getElementById('apkStatus');
+  const apkDownloadAreaEl = document.getElementById('apkDownloadArea');
+  function showApkStatus(type, msg) {
+    apkStatusEl.className = 'status show ' + type;
+    apkStatusEl.innerHTML = msg;
+  }
+  let jszipLoadPromise = null;
+  function loadJSZip() {
+    if (window.JSZip) return Promise.resolve();
+    if (jszipLoadPromise) return jszipLoadPromise;
+    jszipLoadPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('JSZipの読み込みに失敗しました'));
+      document.head.appendChild(s);
+    });
+    return jszipLoadPromise;
+  }
+
+  async function findApkWorkflow(ctx, headers) {
+    const res = await fetch('https://api.github.com/repos/' + ctx.repo + '/actions/workflows', { headers });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const workflows = (data.workflows || []).filter((w) => w.state === 'active');
+    if (!workflows.length) return null;
+    const scored = workflows.map((w) => {
+      const hay = (w.name + ' ' + w.path).toLowerCase();
+      let score = 0;
+      if (hay.includes('apk')) score += 2;
+      if (hay.includes('android')) score += 1;
+      return { w, score };
+    }).filter((x) => x.score > 0);
+    if (!scored.length) return null;
+    scored.sort((a, b) => b.score - a.score);
+    return scored[0].w;
+  }
+
+  async function findTriggeredRun(ctx, headers, workflowId, startTimeMs) {
+    const res = await fetch('https://api.github.com/repos/' + ctx.repo + '/actions/workflows/' + workflowId + '/runs?branch=' + encodeURIComponent(ctx.branch) + '&per_page=5', { headers });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const runs = (data.workflow_runs || []).filter((r) => new Date(r.created_at).getTime() >= startTimeMs - 5000);
+    if (!runs.length) return null;
+    runs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    return runs[0];
+  }
+
+  async function checkAndBuildApk(ctx, startTimeMs, appLabel) {
+    const headers = {
+      'Authorization': 'Bearer ' + ctx.token,
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    };
+
+    apkDownloadAreaEl.innerHTML = '';
+    let workflow;
+    try {
+      workflow = await findApkWorkflow(ctx, headers);
+    } catch (e) {
+      return; // ワークフロー一覧の取得に失敗した場合は静かにスキップ（Android用でないアプリの可能性が高いため）
+    }
+    if (!workflow) return; // Androidビルド用のワークフローが見つからないアプリでは何もしない
+
+    showApkStatus('info', '「' + appLabel + '」のAPKビルド状況を確認しています…');
+
+    // push で自動起動したはずのランを探す（最大15秒ほど待つ）
+    let run = null;
+    for (let i = 0; i < 3 && !run; i++) {
+      try {
+        run = await findTriggeredRun(ctx, headers, workflow.id, startTimeMs);
+      } catch (e) { /* retry */ }
+      if (!run) await sleep(5000);
+    }
+
+    // 見つからなければ workflow_dispatch で手動起動を試みる（トークンに Actions: Read and write が必要）
+    if (!run) {
+      try {
+        const dispatchTime = Date.now();
+        const dRes = await fetch('https://api.github.com/repos/' + ctx.repo + '/actions/workflows/' + workflow.id + '/dispatches', {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ref: ctx.branch })
+        });
+        if (dRes.status === 403 || dRes.status === 404) {
+          showApkStatus('info', 'APKビルドの自動開始をスキップしました（トークンに「Actions: Read and write」権限がありません）。GitHub側で手動実行するか、トークンの権限を追加してください。');
+          return;
+        }
+        if (!dRes.ok && dRes.status !== 204) {
+          showApkStatus('info', 'APKビルドを自動開始できませんでした。GitHub側のActionsタブから手動実行してください。');
+          return;
+        }
+        for (let i = 0; i < 4 && !run; i++) {
+          await sleep(4000);
+          try {
+            run = await findTriggeredRun(ctx, headers, workflow.id, dispatchTime);
+          } catch (e) { /* retry */ }
+        }
+      } catch (e) {
+        showApkStatus('info', 'APKビルドの自動開始中にエラーが発生しました。GitHub側のActionsタブをご確認ください。');
+        return;
+      }
+    }
+
+    if (!run) {
+      showApkStatus('info', 'ビルドの開始を確認できませんでした。時間をおいて、GitHub側のActionsタブをご確認ください。');
+      return;
+    }
+
+    showApkStatus('info', '「' + appLabel + '」のAPKをビルド中…（数分かかる場合があります）<br><a href="' + run.html_url + '" target="_blank" rel="noopener">ビルド状況をGitHubで見る</a>');
+
+    const maxAttempts = 60; // 5秒 × 60回 = 最大5分
+    let finished = null;
+    for (let i = 0; i < maxAttempts; i++) {
+      await sleep(5000);
+      try {
+        const rRes = await fetch('https://api.github.com/repos/' + ctx.repo + '/actions/runs/' + run.id, { headers });
+        if (rRes.ok) {
+          const rData = await rRes.json();
+          if (rData.status === 'completed') { finished = rData; break; }
+        }
+      } catch (e) { /* 一時的なエラーは無視して次のポーリングへ */ }
+    }
+
+    if (!finished) {
+      showApkStatus('info', 'ビルドの完了確認がタイムアウトしました。<br><a href="' + run.html_url + '" target="_blank" rel="noopener">GitHubでビルド状況を確認する</a>');
+      return;
+    }
+    if (finished.conclusion !== 'success') {
+      showApkStatus('error', '✖ 「' + appLabel + '」のAPKビルドに失敗しました（' + finished.conclusion + '）。<br><a href="' + finished.html_url + '" target="_blank" rel="noopener">GitHubでログを確認する</a>');
+      notifyUser('ビルド失敗', '「' + appLabel + '」のAPKビルドに失敗しました。');
+      return;
+    }
+
+    showApkStatus('info', 'ビルド完了。APKを取得しています…');
+
+    let artifact;
+    try {
+      const aRes = await fetch('https://api.github.com/repos/' + ctx.repo + '/actions/runs/' + run.id + '/artifacts', { headers });
+      if (!aRes.ok) throw new Error('成果物一覧の取得に失敗しました（' + aRes.status + '）');
+      const aData = await aRes.json();
+      const artifacts = aData.artifacts || [];
+      if (!artifacts.length) {
+        showApkStatus('info', 'ビルドは成功しましたが、成果物（APK）が見つかりませんでした。<br><a href="' + finished.html_url + '" target="_blank" rel="noopener">GitHubで確認する</a>');
+        return;
+      }
+      artifact = artifacts.find((a) => /apk/i.test(a.name)) || artifacts[0];
+    } catch (e) {
+      showApkStatus('error', '成果物の取得に失敗しました：' + e.message);
+      return;
+    }
+
+    try {
+      const zRes = await fetch(artifact.archive_download_url, { headers });
+      if (!zRes.ok) throw new Error('成果物のダウンロードに失敗しました（' + zRes.status + '）');
+      const zipBuffer = await zRes.arrayBuffer();
+
+      await loadJSZip();
+      const zip = await window.JSZip.loadAsync(zipBuffer);
+      let apkEntry = null;
+      let apkName = null;
+      zip.forEach((relPath, entry) => {
+        if (!apkEntry && !entry.dir && /\.apk$/i.test(relPath)) {
+          apkEntry = entry;
+          apkName = relPath.split('/').pop();
+        }
+      });
+
+      if (!apkEntry) {
+        // apkが見つからない場合はzipごとダウンロードできるようにする
+        const zipBlob = new Blob([zipBuffer], { type: 'application/zip' });
+        const url = URL.createObjectURL(zipBlob);
+        apkDownloadAreaEl.innerHTML = '';
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = artifact.name + '.zip';
+        link.className = 'link-btn';
+        link.textContent = '📦 成果物（zip）をダウンロード（apkファイルは見つかりませんでした）';
+        apkDownloadAreaEl.appendChild(link);
+        showApkStatus('info', '✔ ビルド完了。成果物の中にapkファイルが見つからなかったため、zipのままダウンロードできるようにしました。');
+        notifyUser('ビルド完了', '「' + appLabel + '」のビルドが完了しました（成果物はzip形式です）。');
+        return;
+      }
+
+      const apkBlob = await apkEntry.async('blob');
+      const typedBlob = new Blob([apkBlob], { type: 'application/vnd.android.package-archive' });
+      const url = URL.createObjectURL(typedBlob);
+
+      apkDownloadAreaEl.innerHTML = '';
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = apkName || (appLabel + '.apk');
+      link.className = 'link-btn';
+      link.textContent = '📲 ' + (apkName || 'APK') + ' をダウンロード（タップしてインストール）';
+      apkDownloadAreaEl.appendChild(link);
+
+      showApkStatus('success', '✔ 「' + appLabel + '」のAPKビルドが完了しました。上のボタンをタップしてダウンロードし、ダウンロード完了の通知（または「ダウンロード」フォルダ）からタップするとインストールできます。初回は「このソースからのアプリを許可」の確認が表示される場合があります。');
+      notifyUser('APKビルド完了', '「' + appLabel + '」のAPKができました。タップしてダウンロードしてください。');
+    } catch (e) {
+      showApkStatus('error', 'APKの取得中にエラーが発生しました：' + e.message);
+    }
   }
 
   function arrayBufferToBase64(buffer) {
@@ -1878,6 +2143,7 @@
       const matched = appList.find((r) => repoKey(r) === repo);
       const appLabel = matched ? matched.label : repo;
       waitForPagesDeployment(ctx, uploadStartTime, appLabel);
+      checkAndBuildApk(ctx, uploadStartTime, appLabel);
     }
   }
 
