@@ -1757,7 +1757,7 @@
       link.textContent = '📲 ' + (apkName || 'APK') + ' をダウンロード（タップしてインストール）';
       apkDownloadAreaEl.appendChild(link);
 
-      showApkStatus('success', '✔ 「' + appLabel + '」のAPKビルドが完了しました。上のボタンをタップしてダウンロードし、ダウンロード完了の通知（または「ダウンロード」フォルダ）からタップするとインストールできます。初回は「このソースからのアプリを許可」の確認が表示される場合があります。');
+      showApkStatus('success', '✔ 「' + appLabel + '」のAPKビルドが完了しました。下のリンクをタップしてダウンロードし、ダウンロード完了の通知（または「ダウンロード」フォルダ）からタップするとインストールできます。初回は「このソースからのアプリを許可」の確認が表示される場合があります。');
       notifyUser('APKビルド完了', '「' + appLabel + '」のAPKができました。タップしてダウンロードしてください。');
     } catch (e) {
       showApkStatus('error', 'APKの取得中にエラーが発生しました：' + e.message);
