@@ -424,6 +424,15 @@
     <button type="button" class="add-app-btn" id="addAppBtn">アプリを追加</button>
   </div>
 
+  <button type="button" class="link-btn" id="toggleBackupManageBtn">＋ 設定のバックアップ（エクスポート／インポート）</button>
+  <div class="manage-panel" id="backupManagePanel" style="display:none;">
+    <div class="hint">登録済みのGitHubアカウント・トークン・アプリ一覧などの設定を1つのファイルに書き出して、別の端末に読み込ませることができます。トークンを含む重要なファイルです。送信したり、他人と共有したりしないようご注意ください。</div>
+    <button type="button" class="add-app-btn" id="exportSettingsBtn">📤 設定をエクスポート（ファイルに保存）</button>
+    <input type="file" id="importSettingsInput" accept="application/json,.json" style="display:none;">
+    <button type="button" class="add-app-btn" id="importSettingsBtn">📥 設定をインポート（ファイルから復元）</button>
+    <div class="hint" id="backupStatus"></div>
+  </div>
+
   <label for="path" id="pathLabel">リポジトリ内の配置パス</label>
   <input type="text" id="path" placeholder="index.html" value="index.html">
   <div class="hint" id="pathHint">このパスがそのままファイル名として使われます。パス欄を自分で編集していない場合は、選んだファイルの名前が自動で入ります。</div>
@@ -949,6 +958,99 @@
       filesVersion += 1;
       autoDetectExistingPaths(filesVersion);
     }
+  });
+
+  // --- 設定のエクスポート／インポート（端末間でのお引っ越し用） ---
+  // アカウント・トークン・アプリ一覧などはすべてこの端末のブラウザ内（localStorage）だけに
+  // 保存される設計のため、他の端末とは自動では同期されない。
+  // そのため、設定一式をファイルに書き出し／読み込みできるようにして、
+  // 手動での「お引っ越し」ができるようにする（外部サーバーは一切経由しない）。
+  const toggleBackupManageBtn = document.getElementById('toggleBackupManageBtn');
+  const backupManagePanel = document.getElementById('backupManagePanel');
+  const exportSettingsBtn = document.getElementById('exportSettingsBtn');
+  const importSettingsBtn = document.getElementById('importSettingsBtn');
+  const importSettingsInput = document.getElementById('importSettingsInput');
+  const backupStatusEl = document.getElementById('backupStatus');
+
+  function showBackupStatus(type, msg) {
+    backupStatusEl.className = 'hint' + (type ? ' ' + type : '');
+    backupStatusEl.textContent = msg;
+  }
+
+  toggleBackupManageBtn.addEventListener('click', () => {
+    const isHidden = backupManagePanel.style.display === 'none';
+    backupManagePanel.style.display = isHidden ? 'block' : 'none';
+    toggleBackupManageBtn.textContent = isHidden ? '－ 設定のバックアップを閉じる' : '＋ 設定のバックアップ（エクスポート／インポート）';
+  });
+
+  exportSettingsBtn.addEventListener('click', () => {
+    try {
+      const payload = {
+        type: 'gh-uploader-tool-settings',
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        accounts: JSON.parse(localStorage.getItem(ACCOUNTS_KEY) || '[]'),
+        selectedAccountId: localStorage.getItem(SELECTED_ACCOUNT_KEY) || '',
+        appList: JSON.parse(localStorage.getItem(APP_LIST_KEY) || '[]'),
+        usageCounts: JSON.parse(localStorage.getItem(USAGE_KEY) || '{}'),
+        lastUsedRepo: localStorage.getItem(LAST_USED_KEY) || ''
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const ts = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const fname = 'gh-uploader-settings-' + ts.getFullYear() + pad(ts.getMonth() + 1) + pad(ts.getDate()) + '-' + pad(ts.getHours()) + pad(ts.getMinutes()) + '.json';
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fname;
+      a.click();
+      showBackupStatus('success', '✔ 設定を書き出しました（' + fname + '）。トークンを含む重要なファイルです。送信・共有せず、安全な場所に保管してください。');
+    } catch (e) {
+      showBackupStatus('error', 'エクスポートに失敗しました：' + e.message);
+    }
+  });
+
+  importSettingsBtn.addEventListener('click', () => importSettingsInput.click());
+
+  importSettingsInput.addEventListener('change', () => {
+    const file = importSettingsInput.files[0];
+    importSettingsInput.value = '';
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (!data || data.type !== 'gh-uploader-tool-settings' || !Array.isArray(data.accounts) || !Array.isArray(data.appList)) {
+          showBackupStatus('error', 'このファイルは設定のバックアップファイルとして認識できませんでした。');
+          return;
+        }
+        const accountCount = data.accounts.length;
+        const appCount = data.appList.length;
+        const ok = window.confirm(
+          'この端末に保存されている設定を、読み込んだファイルの内容（アカウント ' + accountCount + '件・アプリ ' + appCount + '件）で上書きします。\n' +
+          '現在この端末に登録されている内容は失われます。よろしいですか？'
+        );
+        if (!ok) return;
+
+        localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(data.accounts));
+        localStorage.setItem(APP_LIST_KEY, JSON.stringify(data.appList));
+        localStorage.setItem(SELECTED_ACCOUNT_KEY, data.selectedAccountId || '');
+        localStorage.setItem(USAGE_KEY, JSON.stringify(data.usageCounts || {}));
+        localStorage.setItem(LAST_USED_KEY, data.lastUsedRepo || '');
+
+        renderAccounts();
+        updateAccountStatus();
+        renderAll();
+        showBackupStatus('success', '✔ 設定を読み込みました（アカウント ' + accountCount + '件・アプリ ' + appCount + '件）。');
+      } catch (e) {
+        showBackupStatus('error', 'ファイルの読み込みに失敗しました：' + e.message);
+      }
+    };
+    reader.onerror = () => {
+      showBackupStatus('error', 'ファイルの読み込みに失敗しました。');
+    };
+    reader.readAsText(file);
   });
 
   renderAll();
