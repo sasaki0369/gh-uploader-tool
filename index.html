@@ -447,6 +447,7 @@
   <button id="uploadBtn" disabled>GitHub にアップロード</button>
 
   <div class="status" id="status"></div>
+  <div id="uploadRetryArea"></div>
   <div class="status" id="deployStatus"></div>
   <div class="status" id="apkStatus"></div>
   <div id="apkDownloadArea"></div>
@@ -1069,6 +1070,20 @@
     });
   }
 
+  // 一部の経路（他アプリからのダウンロードや、zipファイル自体の名前など）では、
+  // 日本語などのファイル名が "%E6%97%A5..." のようにパーセントエンコードされたまま
+  // 保存されてしまっていることがある。見た目にも配置パスにも支障が出るため、
+  // それらしきパターンを見つけたら読める文字列に戻す（該当しない場合はそのまま返す）。
+  function decodeIfPercentEncoded(name) {
+    if (typeof name !== 'string' || !/%[0-9A-Fa-f]{2}/.test(name)) return name;
+    try {
+      const decoded = decodeURIComponent(name);
+      return decoded || name;
+    } catch (e) {
+      return name;
+    }
+  }
+
   // zipファイルが1つだけ選ばれた場合、中身を自動展開してフォルダ構成を保ったまま
   // 複数ファイルとして扱う（スマホでフォルダ一式をまとめてアップしたい場合向け）。
   // zip以外、または複数ファイルが同時に選ばれた場合はそのまま返す。
@@ -1077,7 +1092,8 @@
     if (files.length !== 1 || !/\.zip$/i.test(files[0].name)) return files;
 
     const zipFile = files[0];
-    showStatus('info', '📦 「' + zipFile.name + '」を展開しています…');
+    const zipDisplayName = decodeIfPercentEncoded(zipFile.name);
+    showStatus('info', '📦 「' + zipDisplayName + '」を展開しています…');
     try {
       await loadJSZip();
       const buffer = await zipFile.arrayBuffer();
@@ -1085,7 +1101,10 @@
 
       const entries = [];
       zip.forEach((relPath, entry) => {
-        if (!entry.dir) entries.push({ relPath: relPath.replace(/\\/g, '/'), entry });
+        if (!entry.dir) {
+          const decodedRelPath = relPath.replace(/\\/g, '/').split('/').map(decodeIfPercentEncoded).join('/');
+          entries.push({ relPath: decodedRelPath, entry });
+        }
       });
 
       const filtered = entries.filter((e) => {
@@ -1104,7 +1123,7 @@
       // 合わせるため、zipファイル自身の名前を仮想的なトップフォルダとして補う。
       const firstSegs = filtered.map((e) => e.relPath.split('/')[0]);
       const hasCommonRoot = filtered.every((e) => e.relPath.includes('/')) && firstSegs.every((s) => s === firstSegs[0]);
-      const zipBaseName = zipFile.name.replace(/\.zip$/i, '');
+      const zipBaseName = decodeIfPercentEncoded(zipFile.name.replace(/\.zip$/i, ''));
 
       const out = [];
       for (const e of filtered) {
@@ -1117,7 +1136,7 @@
         } catch (err) { /* 付与できない場合はファイル名のみで扱う */ }
         out.push(file);
       }
-      showStatus('success', '📦 「' + zipFile.name + '」を展開しました（' + out.length + '件）。内容をご確認のうえアップロードしてください。');
+      showStatus('success', '📦 「' + zipDisplayName + '」を展開しました（' + out.length + '件）。内容をご確認のうえアップロードしてください。');
       return out;
     } catch (e) {
       showStatus('error', 'zipの展開に失敗しました：' + e.message);
@@ -1140,7 +1159,8 @@
     return PROTECTED_ICON_SIZES.includes(parseInt(m[2], 10));
   }
 
-  function normalizeUploadFileName(name) {
+  function normalizeUploadFileName(rawName) {
+    const name = decodeIfPercentEncoded(rawName);
     if (isProtectedIconFileName(name)) return name;
     const extMatch = name.match(/(\.[^./\\]+)$/);
     if (!extMatch) return name;
@@ -1165,7 +1185,7 @@
   // 例: "GabaGrowth-Android-v2.1-source/app/build.gradle" → "app/build.gradle"
   function defaultTargetPathFor(file) {
     if (file.webkitRelativePath) {
-      const parts = file.webkitRelativePath.split('/').filter(Boolean);
+      const parts = file.webkitRelativePath.split('/').filter(Boolean).map(decodeIfPercentEncoded);
       parts.shift(); // 選んだフォルダ自身の名前を除去
       if (parts.length) {
         const base = normalizeUploadFileName(parts.pop());
@@ -1191,11 +1211,12 @@
 
     if (selectedFiles.length === 1) {
       const f = selectedFiles[0];
+      const originalDisplayName = decodeIfPercentEncoded(f.name);
       const normalized = normalizeUploadFileName(f.name);
-      fileNameEl.textContent = normalized + (normalized !== f.name ? '（元のファイル名: ' + f.name + '）' : '') + '（' + Math.round(f.size / 1024) + ' KB）';
+      fileNameEl.textContent = normalized + (normalized !== originalDisplayName ? '（元のファイル名: ' + originalDisplayName + '）' : '') + '（' + Math.round(f.size / 1024) + ' KB）';
     } else {
       const totalKb = Math.round(selectedFiles.reduce((sum, f) => sum + f.size, 0) / 1024);
-      const names = selectedFiles.map((f) => f.webkitRelativePath || f.name).join(', ');
+      const names = selectedFiles.map((f) => decodeIfPercentEncoded(f.webkitRelativePath || f.name)).join(', ');
       fileNameEl.textContent = selectedFiles.length + '個のファイルを選択（計 ' + totalKb + ' KB）：' + names;
       multiFilePaths = selectedFiles.map((f) => defaultTargetPathFor(f));
       multiFilePathsTouched = selectedFiles.map(() => false);
@@ -1217,10 +1238,11 @@
       const row = document.createElement('div');
       row.className = 'path-row';
 
+      const displayName = decodeIfPercentEncoded(file.webkitRelativePath || file.name);
       const label = document.createElement('div');
       label.className = 'path-row-name';
-      label.textContent = file.webkitRelativePath || file.name;
-      label.title = file.webkitRelativePath || file.name;
+      label.textContent = displayName;
+      label.title = displayName;
 
       const input = document.createElement('input');
       input.type = 'text';
@@ -2094,6 +2116,77 @@
     openConfirmModal({ token, repo, branch, message, targets });
   });
 
+  // --- 画面ロック・バックグラウンド対策 ---
+  // スマホで長時間（多ファイル）のアップロード中に画面が自動消灯・ロックされると、
+  // ブラウザがタブをバックグラウンド扱いにして処理を止めてしまうことがある。
+  // Wake Lock API に対応している端末では、アップロード中は画面消灯を防止する。
+  // （対応していない場合や許可されない場合は何もしない＝従来通り）
+  let activeWakeLock = null;
+  let uploadInProgress = false;
+  const uploadRetryAreaEl = document.getElementById('uploadRetryArea');
+
+  async function acquireWakeLock() {
+    try {
+      if ('wakeLock' in navigator) {
+        activeWakeLock = await navigator.wakeLock.request('screen');
+        activeWakeLock.addEventListener('release', () => { activeWakeLock = null; });
+      }
+    } catch (e) { /* 対応していない・許可されない場合は無視（従来通りの動作にフォールバック） */ }
+  }
+  function releaseWakeLock() {
+    try {
+      if (activeWakeLock) { activeWakeLock.release(); }
+    } catch (e) { /* noop */ }
+    activeWakeLock = null;
+  }
+  // 画面ロックなどで一旦 Wake Lock が解除されても、タブが再び表示された時点で
+  // アップロードがまだ続いていれば再取得を試みる
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && uploadInProgress && !activeWakeLock) {
+      acquireWakeLock();
+    }
+  });
+
+  // 失敗した（または未着手のまま中断された）ファイルだけを対象に再実行できるようにする
+  function renderUploadRetryButton(ctx, pendingTargets) {
+    uploadRetryAreaEl.innerHTML = '';
+    if (!pendingTargets.length) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'link-btn';
+    btn.textContent = '🔄 失敗・未完了分（' + pendingTargets.length + '件）だけ再送信する';
+    btn.addEventListener('click', () => {
+      btn.disabled = true;
+      performUpload({ token: ctx.token, repo: ctx.repo, branch: ctx.branch, message: ctx.message, targets: pendingTargets });
+    });
+    uploadRetryAreaEl.appendChild(btn);
+  }
+
+  // 配列を、指定した並列数までまとめて処理するユーティリティ
+  // （1件ずつ逐次処理すると、ファイル数が多い時にアップロード全体が長時間化し、
+  //   スマホの画面ロック等でブラウザがバックグラウンド扱いにしてしまうリスクが高まるため、
+  //   並列化して全体の所要時間を大きく短縮する）
+  async function runWithConcurrency(items, limit, worker) {
+    const results = new Array(items.length);
+    let nextIndex = 0;
+    async function runNext() {
+      while (nextIndex < items.length) {
+        const current = nextIndex++;
+        results[current] = await worker(items[current], current);
+      }
+    }
+    const n = Math.max(1, Math.min(limit, items.length));
+    const workers = [];
+    for (let k = 0; k < n; k++) workers.push(runNext());
+    await Promise.all(workers);
+    return results;
+  }
+
+  function workflowsPermissionHint(statusCode, apiMessage) {
+    return '（' + statusCode + '）' + (apiMessage || 'Resource not accessible by personal access token') +
+      ' ／ .github/workflows/ 配下の更新には、トークンに「Workflows: Read and write」権限が別途必要です。GitHub の Settings＞Developer settings＞Fine-grained tokens で、このトークンの Repository permissions に「Workflows」を追加（Read and write）してから再度お試しください。';
+  }
+
   async function performUpload(ctx) {
     const { token, repo, branch, message, targets } = ctx;
 
@@ -2104,18 +2197,116 @@
     };
 
     uploadBtn.disabled = true;
-    const results = [];
+    uploadRetryAreaEl.innerHTML = '';
+    uploadInProgress = true;
+    await acquireWakeLock();
+    let results = [];
     const uploadStartTime = Date.now();
     deployStatusEl.className = 'status';
     deployStatusEl.innerHTML = '';
 
-    for (let i = 0; i < targets.length; i++) {
-      const { file, targetPath } = targets[i];
-      const progressPrefix = targets.length > 1 ? '（' + (i + 1) + '/' + targets.length + '）' : '';
-      const fileMessage = message || ('Update ' + targetPath + ' via uploader tool');
-
+    if (targets.length > 1) {
+      // 複数ファイルの場合：1ファイルずつ逐次コミットするのではなく、
+      // Git の Tree/Commit API を使って「1回のコミット」にまとめてアップロードする。
+      // 通信回数が大幅に減り、ブロブ（各ファイルの内容）の作成も並列で行えるため、
+      // ファイル数が多くても全体の所要時間を数秒〜十数秒程度まで短縮できる。
       try {
-        showStatus('info', progressPrefix + targetPath + ' を確認中…');
+        showStatus('info', 'ブランチの最新状態を確認しています…');
+        const refRes = await fetch('https://api.github.com/repos/' + repo + '/git/ref/' + encodeURIComponent('heads/' + branch), { headers });
+        if (!refRes.ok) {
+          const errData = await refRes.json().catch(() => ({}));
+          throw new Error('（' + refRes.status + '）ブランチの取得に失敗しました: ' + (errData.message || ''));
+        }
+        const refData = await refRes.json();
+        const baseCommitSha = refData.object.sha;
+
+        const baseCommitRes = await fetch('https://api.github.com/repos/' + repo + '/git/commits/' + baseCommitSha, { headers });
+        if (!baseCommitRes.ok) {
+          const errData = await baseCommitRes.json().catch(() => ({}));
+          throw new Error('（' + baseCommitRes.status + '）ベースコミットの取得に失敗しました: ' + (errData.message || ''));
+        }
+        const baseCommitData = await baseCommitRes.json();
+        const baseTreeSha = baseCommitData.tree.sha;
+
+        let doneCount = 0;
+        const blobResults = await runWithConcurrency(targets, 6, async ({ file, targetPath }) => {
+          try {
+            const arrayBuffer = await file.arrayBuffer();
+            const base64Content = arrayBufferToBase64(arrayBuffer);
+            const blobRes = await fetch('https://api.github.com/repos/' + repo + '/git/blobs', {
+              method: 'POST',
+              headers: { ...headers, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ content: base64Content, encoding: 'base64' })
+            });
+            const blobData = await blobRes.json();
+            doneCount++;
+            showStatus('info', '（' + doneCount + '/' + targets.length + '）ファイルの内容をアップロード中…');
+            if (!blobRes.ok) {
+              return { targetPath, ok: false, error: '（' + blobRes.status + '）' + (blobData.message || JSON.stringify(blobData)) };
+            }
+            return { targetPath, ok: true, sha: blobData.sha };
+          } catch (err) {
+            doneCount++;
+            return { targetPath, ok: false, error: err.message };
+          }
+        });
+
+        const failedBlobs = blobResults.filter((b) => !b.ok);
+        if (failedBlobs.length) {
+          // 1件でも失敗した場合は、中途半端な状態でコミットしてしまわないよう、
+          // コミット自体は行わない（全件まとめて未完了＝再送信の対象とする）。
+          results = targets.map(({ targetPath }) => {
+            const failed = failedBlobs.find((b) => b.targetPath === targetPath);
+            return failed
+              ? { path: targetPath, ok: false, error: failed.error }
+              : { path: targetPath, ok: false, error: '他のファイルでエラーが発生したため、コミットは行われませんでした。' };
+          });
+        } else {
+          showStatus('info', 'コミットを作成しています…');
+          const treeEntries = blobResults.map((b) => ({ path: b.targetPath, mode: '100644', type: 'blob', sha: b.sha }));
+          const treeRes = await fetch('https://api.github.com/repos/' + repo + '/git/trees', {
+            method: 'POST',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ base_tree: baseTreeSha, tree: treeEntries })
+          });
+          const treeData = await treeRes.json();
+          if (!treeRes.ok) throw new Error('（' + treeRes.status + '）ツリーの作成に失敗しました: ' + (treeData.message || ''));
+
+          const commitMessage = message || ('Update ' + targets.length + ' files via uploader tool');
+          const commitRes = await fetch('https://api.github.com/repos/' + repo + '/git/commits', {
+            method: 'POST',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: commitMessage, tree: treeData.sha, parents: [baseCommitSha] })
+          });
+          const commitData = await commitRes.json();
+          if (!commitRes.ok) throw new Error('（' + commitRes.status + '）コミットの作成に失敗しました: ' + (commitData.message || ''));
+
+          showStatus('info', 'ブランチを更新しています…');
+          const updateRefRes = await fetch('https://api.github.com/repos/' + repo + '/git/refs/' + encodeURIComponent('heads/' + branch), {
+            method: 'PATCH',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sha: commitData.sha })
+          });
+          const updateRefData = await updateRefRes.json().catch(() => ({}));
+          if (!updateRefRes.ok) {
+            if (updateRefRes.status === 403 && targets.some((t) => /^\.github\/workflows\//.test(t.targetPath))) {
+              throw new Error(workflowsPermissionHint(updateRefRes.status, updateRefData.message));
+            }
+            throw new Error('（' + updateRefRes.status + '）ブランチの更新に失敗しました: ' + (updateRefData.message || '') + ' ／ アップロード中に他の変更が加わった可能性があります。再度お試しください。');
+          }
+
+          const commitUrl = commitData.html_url;
+          results = targets.map(({ targetPath }) => ({ path: targetPath, ok: true, commitUrl }));
+        }
+      } catch (err) {
+        results = targets.map(({ targetPath }) => ({ path: targetPath, ok: false, error: err.message }));
+      }
+    } else {
+      // 単一ファイルの場合：従来通り Contents API で直接コミットする（シンプルで十分速い）
+      const { file, targetPath } = targets[0];
+      const fileMessage = message || ('Update ' + targetPath + ' via uploader tool');
+      try {
+        showStatus('info', targetPath + ' を確認中…');
         const apiBase = 'https://api.github.com/repos/' + repo + '/contents/' + targetPath.split('/').map(encodeURIComponent).join('/');
 
         let sha = undefined;
@@ -2128,7 +2319,7 @@
           throw new Error('既存ファイルの確認に失敗しました（' + getRes.status + '）: ' + (errData.message || ''));
         }
 
-        showStatus('info', progressPrefix + targetPath + (sha ? ' を更新中…' : ' を新規作成中…'));
+        showStatus('info', targetPath + (sha ? ' を更新中…' : ' を新規作成中…'));
 
         const arrayBuffer = await file.arrayBuffer();
         const base64Content = arrayBufferToBase64(arrayBuffer);
@@ -2149,7 +2340,7 @@
         } else if (putRes.status === 403 && /^\.github\/workflows\//.test(targetPath)) {
           // .github/workflows/ 配下への書き込みは、GitHubの仕様上「Contents」権限だけでは許可されず、
           // トークン側に別途「Workflows」権限が必要（Fine-grained PATの場合）。これはツールの不具合ではない。
-          throw new Error('（403）' + (putData.message || 'Resource not accessible by personal access token') + ' ／ .github/workflows/ 配下の更新には、トークンに「Workflows: Read and write」権限が別途必要です。GitHub の Settings＞Developer settings＞Fine-grained tokens で、このトークンの Repository permissions に「Workflows」を追加（Read and write）してから再度お試しください。');
+          throw new Error(workflowsPermissionHint(putRes.status, putData.message));
         } else {
           throw new Error('（' + putRes.status + '）' + (putData.message || JSON.stringify(putData)));
         }
@@ -2172,11 +2363,15 @@
       summary = '✔ 成功 ' + okResults.length + '件 / ✖ 失敗 ' + ngResults.length + '件<br>';
       if (okResults.length) summary += okResults.map((r) => '✔ ' + r.path).join('<br>') + '<br>';
       summary += ngResults.map((r) => '✖ ' + r.path + '：' + r.error).join('<br>');
-      summary += '<br><span style="opacity:0.8">失敗分はトークンの権限・リポジトリ名・ブランチ名・パスをご確認の上、再度お試しください。</span>';
+      summary += '<br><span style="opacity:0.8">失敗分はトークンの権限・リポジトリ名・ブランチ名・パスをご確認の上、下のボタンから再送信するか、改めてお試しください。</span>';
       showStatus(okResults.length ? 'info' : 'error', summary);
+      const pendingTargets = targets.filter((t) => ngResults.some((r) => r.path === t.targetPath));
+      renderUploadRetryButton(ctx, pendingTargets);
     }
 
     uploadBtn.disabled = false;
+    uploadInProgress = false;
+    releaseWakeLock();
 
     if (okResults.length) {
       const appList = loadAppList();
